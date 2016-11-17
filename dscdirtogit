@@ -1,0 +1,88 @@
+#!/usr/bin/python3
+from debian.debian_support import Version
+from debian.deb822 import Dsc
+from debian.changelog import Changelog
+from git import Repo
+import glob
+import sys
+import re
+from os.path import basename
+import subprocess
+
+def versiontotag(version):
+	tag = str(version)
+	tag = tag.replace("%",":")
+	tag = tag.replace("~","_")
+	tag = re.sub('\.(?=\.|$|lock$)','.#',tag)
+	return tag
+
+foo = Version('2.0.0')
+bar = Version('1:2.2')
+
+localversionmarkers = sys.argv[2].split('$')
+
+versions = []
+dscdir = sys.argv[1];
+for filename in glob.glob(sys.argv[1]+'/*.dsc'):
+	#print(filename)
+	f = open(filename,'r')
+	dsc = Dsc(f)
+	f.close()
+	version = Version(dsc['version'])
+	versions.append((version,filename))
+
+versions.sort()
+
+repo = Repo('.');
+
+def tryfindtag(repo,tagname):
+	try:
+		tag = repo.tags[tagname]
+		return tag
+	except:
+		return None
+
+
+for (version,filename) in versions:
+	print(filename)
+	print(version)
+	tagname = versiontotag(version)
+	if tryfindtag(repo,tagname) == None:
+		#tag not found, that means we have to import it
+		print('starting import process for '+str(version)+' tag name '+tagname)
+		
+		if (subprocess.call(['rm','-rf','extract']) != 0): exit(1)
+		if (subprocess.call(['dpkg-source','-x',filename,'extract']) != 0): exit(1)
+		f = open('extract/debian/changelog','r');
+		changelog = Changelog(f)
+		f.close()
+		parenttagname = ''
+		parenttag = None
+		local = any(x in str(version) for x in localversionmarkers)
+		for cversion in changelog.versions:
+			if (cversion != version):
+				ctagname = versiontotag(cversion)
+				ctag = tryfindtag(repo,ctagname)
+				if ctag != None:
+					parenttagname = ctagname
+					parenttag = ctag
+					break
+				if local:
+					print('immediate parent '+str(cversion)+' for local version '+str(version)+' not found')
+					exit(1)
+		print(parenttagname)
+		if parenttag == None:
+			branchprefix = '+'
+		else:
+			branchprefix = '..'
+			branch = repo.heads.workingbranch
+			branch.commit = parenttag
+		if (subprocess.call(['dcmd','cp',filename,'..']) != 0): exit(1)
+		filename = '../'+basename(filename)
+		command = ['dgit','import-dsc',filename,branchprefix+'workingbranch']
+		print(command)
+		if (subprocess.call(command) != 0): exit(1)
+		
+		branch = repo.heads.workingbranch
+		repo.create_tag(tagname,branch)
+

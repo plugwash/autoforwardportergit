@@ -1,0 +1,21 @@
+#!/bin/bash -e
+
+for PACKAGE in $(cat /build/dscdirtogit/whitelist ) ; do
+    #| grep -v glibc
+    if [[ $PACKAGE == lib* ]]; then
+        PACKAGEDIR=${PACKAGE:0:4}/$PACKAGE
+    else
+        PACKAGEDIR=${PACKAGE:0:1}/$PACKAGE
+    fi
+
+    mkdir -p /build/git/$PACKAGEDIR
+    cd /build/git/$PACKAGEDIR
+    if [ ! -d .git ]; then
+        git init
+    fi
+    git config --local user.name "Raspbian Automatic git importer"
+    git config --local user.email root@raspbian.org
+    #/build/dscdirtogit/dscdirtogit /build/sourcearchive/main/$PACKAGEDIR +rpi$+rvt 
+    /build/dscdirtogit/dscdirtogit /build/workingrepo/pool/main/$PACKAGEDIR +rpi$+rvt 
+
+done

@@ -1,0 +1,110 @@
+#!/bin/bash -ev
+#Copyright (c) 2009-2014 Peter M. Green and Adam D. Barratt
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy of
+#this software and associated documentation files (the "Software"), to deal in
+#the Software without restriction, including without limitation the rights to
+#use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+#of the Software, and to permit persons to whom the Software is furnished to do
+#so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+#THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
+
+#scan a sources file and look for source packages where the version number
+#of the latest version contains +rpi1 and produce a filter list for reprepro
+
+#First command line parameter is the Sources file to scan
+#generated filter list is produced on standard output
+
+#based on code by adsb from 
+#http://anonscm.debian.org/gitweb/?p=mirror/britney1.git;a=blob_plain;f=britney;h=094ec121d5bea3e68af76c493f2b9d91d734f45e;hb=HEAD
+#I don't pretend to understand this perl code
+process_pkg_list() {
+  perl "-MAptPkg::Config '\$_config'" -e '
+    my $versioning = $_config->system->versioning;
+
+    while (<>) {
+      $current .= $_;
+
+      if (/^Package: (.*)$/) {
+        $pkg = $1;
+      } elsif (/^Version: (.*)$/) {
+        $version = $1;
+      } elsif (/^\s*$/) {
+        $data{"$pkg"}{"$version"} = $current;
+        $pkg = ""; $version = ""; $current = "";
+      }
+    }
+
+    $data{"$pkg"}{"$version"} = $current if length $current;
+
+    for $pkg2 (sort keys %data) {
+      @versions = (reverse sort {$versioning->compare($a,$b)} keys %{$data{"$pkg2"}});
+      print "$pkg2 $versions[0]\n";
+    }
+  '
+}
+
+set -o pipefail
+
+MAINSUITE=$1
+#update working repo
+cd /build/workingrepo
+
+#if [[ $2 != noupdate ]] ; then
+#    reprepro -V update ${MAINSUITE} ${MAINSUITE}-staging ${MAINSUITE}-deb
+#fi
+#update local source archive, unlike the main public source archive this
+#one is intended to only contain verified source packages.
+#rsync -rv --link-dest=/build/workingrepo/pool --exclude='*.*deb' --ignore-existing /build/workingrepo/pool/ /build/sourcearchive
+
+for SUITE in ${MAINSUITE} ${MAINSUITE}-staging ${MAINSUITE}-deb ; do
+    sources=/build/workingrepo/dists/${SUITE}/main/source/Sources
+    cat $sources | process_pkg_list > /build/tmp/sources-${SUITE}-processed
+done
+
+#for PACKAGE in $(cat /build/autoforwardporter/whitelist.${MAINSUITE}) ; do
+for PACKAGE in $(cat /build/dscdirtogit/whitelist) ; do
+    echo ${PACKAGE}
+    MAINVERSION=`grep ^${PACKAGE}" " /build/tmp/sources-${MAINSUITE}-processed | cut -d " " -f 2` || true
+    STAGINGVERSION=`grep ^${PACKAGE}" " /build/tmp/sources-${MAINSUITE}-staging-processed | cut -d " " -f 2` || true
+    DEBVERSION=`grep ^${PACKAGE}" " /build/tmp/sources-${MAINSUITE}-deb-processed | cut -d " " -f 2` || true
+    echo ${PACKAGE}
+    echo main version $MAINVERSION
+    echo staging version $STAGINGVERSION
+    echo deb version $DEBVERSION
+
+    if [[ $PACKAGE == lib* ]]; then
+        PACKAGEDIR=${PACKAGE:0:4}/$PACKAGE
+    else
+        PACKAGEDIR=${PACKAGE:0:1}/$PACKAGE
+    fi
+
+    cd /build/git/$PACKAGEDIR
+
+    if [[ !  -z  $MAINVERSION ]]; then
+        MAINTAG=$(/build/dscdirtogit/versiontotag $MAINVERSION)
+        git branch -f ${MAINSUITE} $MAINTAG 
+    fi
+
+    if [[ !  -z  $STAGINGVERSION ]]; then
+        STAGINGTAG=$(/build/dscdirtogit/versiontotag $STAGINGVERSION)
+        git branch -f ${MAINSUITE}-staging $STAGINGTAG
+    fi
+
+    if [[ !  -z  $DEBVERSION ]]; then
+        DEBTAG=$(/build/dscdirtogit/versiontotag $DEBVERSION)
+        git branch -f ${MAINSUITE}-deb $DEBTAG 
+    fi
+
+    cd /build/git/$PACKAGEDIR
+
+done

@@ -1,0 +1,104 @@
+#!/usr/bin/python3
+#(C) 2015 Peter Michael Green <plugwash@debian.org>
+#This software is provided 'as-is', without any express or implied warranty. In
+#no event will the authors be held liable for any damages arising from the use
+#of this software.
+#
+#Permission is granted to anyone to use this software for any purpose, including
+#commercial applications, and to alter it and redistribute it freely, subject to
+#the following restrictions:
+#
+#1. The origin of this software must not be misrepresented; you must not claim.
+#that you wrote the original software. If you use this software in a product,
+#an acknowledgment in the product documentation would be appreciated but is.
+#not required.
+#
+#2. Altered source versions must be plainly marked as such, and must not be
+#misrepresented as being the original software.
+#
+#3. This notice may not be removed or altered from any source distribution.
+
+from debian import changelog
+import sys
+filetofix = sys.argv[1]
+newversion = sys.argv[2]
+distribution = sys.argv[3]
+date = sys.argv[4]
+package = sys.argv[5]
+
+upstreamchangelog = []
+olddownstreamchangelog = []
+
+f = open(filetofix,'rb')
+mode = 0; # 0: unconflicted text 1: downstream text 2: mergehead text 3: upstream text
+for line in f:
+	#print(repr(line))
+	if (line.startswith(b'<<<<<<< ')):
+		if (mode == 0):
+			mode = 1
+			#print('found <<<<<<< switching to mode 1')
+		else:
+			print('broken diff3, unexpected <<<<<<<', file=sys.stderr)
+			sys.exit(1);
+	elif (line.startswith(b'||||||| ')):
+		if (mode == 1):
+			mode = 2
+			#print('found ||||||| switching to mode 2')
+		else:
+			print('broken diff3, unexpected |||||||', file=sys.stderr)
+			sys.exit(1);
+	elif (line == b'=======\n'):
+		if (mode == 2):
+			mode = 3
+			#print('found ======= switching to mode 3')
+		else:
+			print('broken diff3, unexpected =======', file=sys.stderr)
+			sys.exit(1);
+	elif (line.startswith(b'>>>>>>> ')):
+		if (mode == 3):
+			#print('found >>>>>>> switching to mode 0')
+			mode = 0
+		else:
+			print('broken diff3, unexpected >>>>>>>', file=sys.stderr)
+			sys.exit(1);
+	elif ((mode == 0) or (mode == 3)):
+		upstreamchangelog.append(line)
+	elif (mode == 1):
+		olddownstreamchangelog.append(line)
+
+f.close()
+
+c = changelog.Changelog(olddownstreamchangelog)
+entries = []
+#unfortunately the changelog module doesn't let us directly access it's list
+#of changes, only an iterator over it, so we have to make our own list.
+#so we can perform a reverse iteration (the changelog module gives us the most
+#recent entry first, we want oldest first)
+for entry in c:
+    entries.append(entry)
+
+if (len(entries) == 0):
+    print('no downstream changelog entries found, aborting')
+    sys.exit(1)
+
+f=open(filetofix,'wb')
+
+f.write((package+' ('+newversion+') '+distribution+'; urgency=medium\n').encode('utf-8'))
+f.write(('\n').encode('utf-8'))
+for entry in reversed(entries):
+	lines = entry.changes()[:] #copy this so we don't modify the libraries
+	                           #version of it.
+	while (lines[0] == ''):
+		 del lines[0]
+	if ((lines[0].strip().upper())[0:8] != '[CHANGES'):
+		f.write(('  [changes brought forward from '+str(entry.version)+' by '+entry.author+' at '+entry.date+']\n').encode('utf-8'))
+	for line in lines:
+		f.write((line+'\n').encode('utf-8'))
+
+f.write((' -- Raspbian forward porter <root@raspbian.org>  '+date+'\n').encode('utf-8'))
+f.write(('\n').encode('utf-8'))
+
+for line in upstreamchangelog:
+	f.write(line)
+
+f.close()

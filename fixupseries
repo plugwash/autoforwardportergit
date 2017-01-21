@@ -1,0 +1,92 @@
+#!/usr/bin/python3
+#(C) 2015 Peter Michael Green <plugwash@debian.org>
+#This software is provided 'as-is', without any express or implied warranty. In
+#no event will the authors be held liable for any damages arising from the use
+#of this software.
+#
+#Permission is granted to anyone to use this software for any purpose, including
+#commercial applications, and to alter it and redistribute it freely, subject to
+#the following restrictions:
+#
+#1. The origin of this software must not be misrepresented; you must not claim.
+#that you wrote the original software. If you use this software in a product,
+#an acknowledgment in the product documentation would be appreciated but is.
+#not required.
+#
+#2. Altered source versions must be plainly marked as such, and must not be
+#misrepresented as being the original software.
+#
+#3. This notice may not be removed or altered from any source distribution.
+
+import sys
+filetofix = sys.argv[1]
+
+f = open(filetofix,'rb')
+series = f.readlines()
+f.close()
+
+mode = 0; # 0: unconflicted text 1: downstream text 2: mergehead text 3: upstream text
+
+downstream = set()
+mergehead = set()
+upstream = set()
+deferred = []
+
+f = open(filetofix,'wb')
+
+for stage in range(0,2):
+	for line in series:
+		#print(repr(line))
+		if (line.startswith(b'<<<<<<< ')):
+			if (mode == 0):
+				mode = 1
+				#print('found <<<<<<< switching to mode 1')
+			else:
+				print('broken diff3, unexpected <<<<<<<', file=sys.stderr)
+				sys.exit(1);
+		elif (line.startswith(b'||||||| ')):
+			if (mode == 1):
+				mode = 2
+				#print('found ||||||| switching to mode 2')
+			else:
+				print('broken diff3, unexpected |||||||', file=sys.stderr)
+				sys.exit(1);
+		elif (line == b'=======\n'):
+			if (mode == 2):
+				mode = 3
+				#print('found ======= switching to mode 3')
+			else:
+				print('broken diff3, unexpected =======', file=sys.stderr)
+				sys.exit(1);
+		elif (line.startswith(b'>>>>>>> ')):
+			if (mode == 3):
+				#print('found >>>>>>> switching to mode 0')
+				mode = 0
+				if (stage == 1):
+					for dline in deferred:
+						f.write(dline)
+					deferred = []
+			else:
+				print('broken diff3, unexpected >>>>>>>', file=sys.stderr)
+				sys.exit(1);
+		elif (stage == 0):
+			if ((mode == 0) or (mode == 1)):
+				downstream.add(line)
+			if ((mode == 0) or (mode == 2)):
+				mergehead.add(line)
+			if ((mode == 0) or (mode == 3)):
+				upstream.add(line)
+		elif (stage == 1):
+			#print(repr(line))
+			if (mode != 2):
+				if (line in new):
+					new.remove(line)
+					if (mode == 1):
+						deferred.append(line)
+					else:
+						f.write(line)
+	if (stage == 0):
+		new = (downstream - mergehead) | (upstream - mergehead) | (upstream & downstream & mergehead)
+		#print(repr(new))
+
+f.close()

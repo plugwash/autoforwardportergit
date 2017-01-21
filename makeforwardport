@@ -1,0 +1,138 @@
+#!/bin/bash -ev
+set -o pipefail
+echo makeforwardport starting command: makeforwardport $1 $2 $3 $4 $5
+PACKAGE=$1
+OLDVERSION=$2
+DEBVERSION=$3
+NEWVERSION=$4
+TARGETSUITE=$5
+
+NEWVERSIONNOEPOCH=`echo ${NEWVERSION} | sed -e s/^[^:]://`
+OLDVERSIONNOEPOCH=`echo ${OLDVERSION} | sed -e s/^[^:]://`
+DEBVERSIONNOEPOCH=`echo ${DEBVERSION} | sed -e s/^[^:]://`
+
+NEWTAG=`/build/autoforwardportergit/versiontotag ${NEWVERSION}`
+OLDTAG=`/build/autoforwardportergit/versiontotag ${OLDVERSION}`
+DEBTAG=`/build/autoforwardportergit/versiontotag ${DEBVERSION}`
+
+if [[ $PACKAGE == lib* ]]; then
+    PACKAGEDIR=${PACKAGE:0:4}/$PACKAGE
+else
+    PACKAGEDIR=${PACKAGE:0:1}/$PACKAGE
+fi
+
+DEBDIFF=/build/debdiffs/*/$PACKAGEDIR/${PACKAGE}_${OLDVERSIONNOEPOCH}.debdiff
+
+cd /build/tmp/
+
+#package specific hacks for linux (not yet ported to git)
+#if [[ ${PACKAGE} = linux ]]; then
+#    filterdiff -p1 -x debian/config.defines.dump -x debian/control.md5sum -x debian/rules.gen debdiffwithoutchangelogorseries | sponge debdiffwithoutchangelogorseries
+#fi
+
+#package specific hacks for xen (not yet ported to git)
+#if [[ ${PACKAGE} = xen ]]; then
+#    filterdiff -p1 -x debian/control.md5sum debdiffwithoutchangelogorseries | sponge debdiffwithoutchangelogorseries
+#fi
+
+BRANCHNAME=`echo $TARGETSUITE | cut -d '-' -f 1`-working
+
+rm -rf makeforwardport
+mkdir makeforwardport
+cd makeforwardport
+git clone /build/git/${PACKAGEDIR} tempgit
+cd tempgit
+git config --local user.name "Raspbian forward pporter"
+git config --local user.email root@raspbian.org
+#make sure there is no current branch
+git checkout -q --detach
+
+git show ${OLDTAG}:debian/changelog > ../c1
+#git show ${DEBTAG}:debian/changelog > ../c2
+#BASEVERSION=`/build/autoforwardportergit/findchangelogcommonancestor ../c1 ../c2`
+BASEVERSION=`/build/autoforwardportergit/findchangelogunmarkedversion ../c1 +rpi$+rvt`
+BASETAG=`/build/autoforwardportergit/versiontotag ${BASEVERSION}`
+
+git branch -f debpsuedomerge $DEBTAG
+git checkout debpsuedomerge
+echo git merge -s ours --ff $BASETAG
+git merge -s ours --ff -m 'pseudomerge to tie together broken upstream history' $BASETAG
+
+git branch -f $BRANCHNAME $OLDTAG
+git checkout $BRANCHNAME
+git config merge.conflictstyle diff3
+git merge debpsuedomerge || true #when a merge has conflicts git exits with a nonzero status code
+git diff --name-only --diff-filter=U > ../conflicts
+/build/autoforwardportergit/fixupchangelog debian/changelog $NEWVERSION $TARGETSUITE "`date -uR`" $PACKAGE
+git add debian/changelog
+if grep ^debian/patches/series$ ../conflicts ; then
+	/build/autoforwardportergit/fixupseries debian/patches/series
+	git add debian/patches/series
+fi
+(if grep ^debian/control.md5sum$ ../conflicts ; then
+	#"kernel style" package,
+	(debian/rules clean || true) && debian/rules clean && git add debian/control.md5sum
+fi) || true
+
+if grep ^debian/control$ ../conflicts ; then
+	(/build/autoforwardportergit/fixupcontrol debian/control .. && git add debian/control) || true
+fi
+
+
+#make sure no branch is checked out in our destination repo so that the push doesn't fail
+cd /build/git/${PACKAGEDIR}
+git checkout -q --detach
+cd /build/tmp/makeforwardport/tempgit
+git push -f origin $BRANCHNAME
+
+if ! git commit -m "Merge version $OLDVERSION and $DEBVERSION to produce $NEWVERSION" ; then
+    #push work in progress so it can be worked on manually
+    git diff --name-only --diff-filter=U > ../conflicts
+    echo conflicts found | cat - ../conflicts debian/changelog | sponge debian/changelog
+    git add debian/changelog
+    cat ../conflicts | while read CONFLICT; do
+        echo git add "$CONFLICT"
+        git add "$CONFLICT"
+    done
+    git commit -m "Failed merge of version $OLDVERSION and $DEBVERSION to produce $NEWVERSION, see list of conflicting files at the top of debian/changelog"
+    git push -f origin $BRANCHNAME
+    exit 1
+fi
+git push -f origin $BRANCHNAME
+dcmd --orig cp /build/sourcearchive/*/$PACKAGEDIR/${PACKAGE}_${DEBVERSIONNOEPOCH}.dsc ..
+dgit -wgf build-source
+cd /build/tmp/makeforwardport
+rm *.changes
+
+#dpkg-source -x  --skip-patches /build/workingrepo/pool/*/$PACKAGEDIR/${PACKAGE}_${DEBVERSIONNOEPOCH}.dsc extract
+
+#defuzz patches (not yet ported to git)
+#cd ..
+#rm -rf extract.defuzz
+#cp -a extract extract.defuzz
+#cd extract.defuzz
+#export QUILT_PATCHES=debian/patches
+#quilt push -a --fuzz 0 || true
+#while quilt push; do
+#	quilt refresh
+#	quilt push -a --fuzz 0 || true
+#done
+#cd ../extract
+#rm -rf debian/patches
+#mv ../extract.defuzz/debian/patches debian/ || true
+#rm -rf ../extract.defuzz
+
+sbuild -snA --force-orig-source -d ${TARGETSUITE} ${PACKAGE}_${NEWVERSIONNOEPOCH}.dsc
+cd /build/autoforwardportergit/output/
+#we want to make sure that the result of sbuild gets preserved even dgit push fails for some reason.
+dcmd cp /build/tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_armhf.changes .
+cd /build/tmp/makeforwardport/tempgit
+/build/autoforwardportergit/setup-dgit-for-push
+#workaround 
+rm -rf ~/.cache/dgit
+PATH=/build/autoforwardportergit/dummy-dput:$PATH dgit push
+
+cd /build/autoforwardportergit/output/
+dcmd cp /build/tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_armhf.changes .
+
+#going forward it would be good to have more inteligent application of --force-orig-source, not a massive priority for now though

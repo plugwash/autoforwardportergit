@@ -25,16 +25,6 @@ DEBDIFF=/build/debdiffs/*/$PACKAGEDIR/${PACKAGE}_${OLDVERSIONNOEPOCH}.debdiff
 
 cd /build/tmp/
 
-#package specific hacks for linux (not yet ported to git)
-#if [[ ${PACKAGE} = linux ]]; then
-#    filterdiff -p1 -x debian/config.defines.dump -x debian/control.md5sum -x debian/rules.gen debdiffwithoutchangelogorseries | sponge debdiffwithoutchangelogorseries
-#fi
-
-#package specific hacks for xen (not yet ported to git)
-#if [[ ${PACKAGE} = xen ]]; then
-#    filterdiff -p1 -x debian/control.md5sum debdiffwithoutchangelogorseries | sponge debdiffwithoutchangelogorseries
-#fi
-
 BRANCHNAME=`echo $TARGETSUITE | cut -d '-' -f 1`-working
 
 rm -rf makeforwardport
@@ -45,7 +35,7 @@ cd tempgit
 git config --local user.name "Raspbian forward pporter"
 git config --local user.email root@raspbian.org
 #make sure there is no current branch
-git checkout -q --detach
+git checkout -q --detach || true
 
 git show ${OLDTAG}:debian/changelog > ../c1
 #git show ${DEBTAG}:debian/changelog > ../c2
@@ -71,7 +61,7 @@ if grep ^debian/patches/series$ ../conflicts ; then
 fi
 (if grep ^debian/control.md5sum$ ../conflicts ; then
 	#"kernel style" package,
-	(debian/rules clean || true) && debian/rules clean && git add debian/control.md5sum
+	(debian/rules clean || true) && debian/rules clean && git add debian/control.md5sum debian/control
 fi) || true
 
 if grep ^debian/control$ ../conflicts ; then
@@ -81,7 +71,7 @@ fi
 
 #make sure no branch is checked out in our destination repo so that the push doesn't fail
 cd /build/git/${PACKAGEDIR}
-git checkout -q --detach
+git checkout -q --detach || true
 cd /build/tmp/makeforwardport/tempgit
 git push -f origin $BRANCHNAME
 
@@ -99,7 +89,7 @@ if ! git commit -m "Merge version $OLDVERSION and $DEBVERSION to produce $NEWVER
     exit 1
 fi
 git push -f origin $BRANCHNAME
-dcmd --orig cp /build/sourcearchive/*/$PACKAGEDIR/${PACKAGE}_${DEBVERSIONNOEPOCH}.dsc ..
+dcmd --orig cp /build/workingrepo/pool/*/$PACKAGEDIR/${PACKAGE}_${DEBVERSIONNOEPOCH}.dsc ..
 dgit -wgf build-source
 cd /build/tmp/makeforwardport
 rm *.changes

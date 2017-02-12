@@ -1,0 +1,38 @@
+#!/bin/bash -e
+
+function pushifexists {
+    exists=`git show-ref $1` || true
+    if [ -n "$exists" ]; then
+        git push -f -u github $1
+    fi
+}
+
+for PACKAGE in $(cat /build/dscdirtogit/whitelist ) ; do
+    #| grep -v glibc
+    echo processing $PACKAGE
+    if [[ $PACKAGE == lib* ]]; then
+        PACKAGEDIR=${PACKAGE:0:4}/$PACKAGE
+    else
+        PACKAGEDIR=${PACKAGE:0:1}/$PACKAGE
+    fi
+
+    cd /build/git/$PACKAGEDIR
+
+    #github doesn't like + signs in repo names, use - instead (could potentially cause conflicts but probablly won't)
+    GITHUBREPO=$(echo $PACKAGE | sed s/+/-/)
+
+    /build/dscdirtogit/fixup-authorless-commits
+    curl --netrc-file ~/github-login https://api.github.com/orgs/raspbian-packages/repos -d '{"name":"'$GITHUBREPO'"}'
+    git remote rm github || true
+    git remote add github git@github.com:raspbian-packages/$GITHUBREPO.git
+    git push -u github --tags
+    pushifexists stretch
+    pushifexists stretch-staging
+    pushifexists stretch-deb
+    pushifexists jessie
+    pushifexists jessie-staging
+    pushifexists jessie-deb
+    pushifexists wheezy
+    pushifexists wheezy-staging
+    pushifexists wheezy-deb
+done

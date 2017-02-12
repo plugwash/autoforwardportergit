@@ -134,8 +134,10 @@ for (version,filename) in versions:
 			branchprefix = '+'
 		else:
 			branchprefix = '..'
-			branch = repo.heads.workingbranch
-			branch.commit = parenttag
+			command = ['git','branch','-f','workingbranch',parenttagname]
+			print(command, flush=True)
+			if (subprocess.call(command) != 0): exit(1)
+		
 		
 		if (dscusesdgit and (commit == None)):
 			print('cannot find commit '+dscgitref+' Referenced by Dgit: in dsc', flush=True)

@@ -67,7 +67,7 @@ cd /build/workingrepo
 #rsync -rv --link-dest=/build/workingrepo/pool --exclude='*.*deb' --ignore-existing /build/workingrepo/pool/ /build/sourcearchive
 
 for SUITE in ${MAINSUITE} ${MAINSUITE}-staging ${MAINSUITE}-deb ; do
-    sources=/build/workingrepo/dists/${SUITE}/main/source/Sources
+    sources=/build/workingrepo/dists/${SUITE}/*/source/Sources
     cat $sources | process_pkg_list > /build/tmp/sources-${SUITE}-processed
 done
 

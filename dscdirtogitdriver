@@ -16,6 +16,6 @@ for PACKAGE in $(cat /build/dscdirtogit/whitelist ) ; do
     git config --local user.name "Raspbian Automatic git importer"
     git config --local user.email root@raspbian.org
     #/build/dscdirtogit/dscdirtogit /build/sourcearchive/main/$PACKAGEDIR +rpi$+rvt 
-    /build/dscdirtogit/dscdirtogit /build/workingrepo/pool/main/$PACKAGEDIR +rpi$+rvt 
+    /build/dscdirtogit/dscdirtogit /build/workingrepo/pool/*/$PACKAGEDIR +rpi$+rvt 
 
 done

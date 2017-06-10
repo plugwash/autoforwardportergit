@@ -42,17 +42,18 @@ def versiontotag(version):
 foo = Version('2.0.0')
 bar = Version('1:2.2')
 
-localversionmarkers = sys.argv[2].split('$')
+localversionmarkers = sys.argv[-1].split('$')
 
 versions = []
-dscdir = sys.argv[1];
-for filename in glob.glob(sys.argv[1]+'/*.dsc'):
-	#print(filename)
-	f = open(filename,'rb')
-	dsc = Dsc(f)
-	f.close()
-	version = Version(dsc['version'])
-	versions.append((version,filename))
+
+for dscdir in sys.argv[1:-1]:
+	for filename in glob.glob(sys.argv[1]+'/*.dsc'):
+		#print(filename)
+		f = open(filename,'rb')
+		dsc = Dsc(f)
+		f.close()
+		version = Version(dsc['version'])
+		versions.append((version,filename))
 
 versions.sort()
 

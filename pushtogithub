@@ -24,11 +24,21 @@ for PACKAGE in $(cat /build/dscdirtogit/whitelist ) ; do
     /build/dscdirtogit/fixup-authorless-commits
     curl --netrc-file ~/github-login https://api.github.com/orgs/raspbian-packages/repos -d '{"name":"'$GITHUBREPO'"}'
     git remote rm github || true
-    git remote add github git@github.com:raspbian-packages/$GITHUBREPO.git
-    git push -u github --tags
-    pushifexists stretch
-    pushifexists stretch-staging
-    pushifexists stretch-deb
+    #git remote add github git@github.com:raspbian-packages/$GITHUBREPO.git
+    git remote add github https://github.com/raspbian-packages/$GITHUBREPO.git
+    git config credential.helper "netrc -f ~/github-login"
+
+    if [[ $PACKAGE == libreoffice ]]; then
+        #unfortunately stretch's libreoffice can't be pushed to github due to
+        #large files.
+        git push -u github `git tag | grep -v 5.`
+    else
+        git push -u github --tags
+        pushifexists stretch
+        pushifexists stretch-staging
+        pushifexists stretch-deb
+    fi
+
     pushifexists jessie
     pushifexists jessie-staging
     pushifexists jessie-deb

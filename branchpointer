@@ -89,7 +89,7 @@ for PACKAGE in $(cat /build/dscdirtogit/whitelist) ; do
     fi
 
     cd /build/git/$PACKAGEDIR
-
+    git checkout -q --detach || true
     if [[ !  -z  $MAINVERSION ]]; then
         MAINTAG=$(/build/dscdirtogit/versiontotag $MAINVERSION)
         git branch -f ${MAINSUITE} $MAINTAG 

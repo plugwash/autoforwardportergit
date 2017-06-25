@@ -1,0 +1,31 @@
+#!/bin/bash -ev
+rm -f loggood
+rm -f logall
+for TAG in $(git tag) ; do
+    git log --pretty=format:"%H" --author="" $TAG >> loggood
+    #git log doesn't seem to add a final newline, add one ourselves
+    echo >> loggood
+    git log --pretty=format:"%H" $TAG >> logall
+    echo >> logall
+done
+
+LC_ALL=C cat loggood | sort | uniq | sponge loggood
+LC_ALL=C cat logall | sort | uniq | sponge logall
+LC_ALL=C comm -13 loggood logall > logbad
+
+BAD_FOUND=false
+
+for COMMIT in $(cat logbad) ; do
+    git checkout $COMMIT
+    git commit --amend --reset-author --no-edit
+    git replace $COMMIT $(git log --pretty=format:"%H" -n 1)
+    BAD_FOUND=true
+done
+
+if [ $BAD_FOUND = true ] ; then
+    git filter-branch -f -- --all
+    
+    for COMMIT in $(cat logbad) ; do
+        git replace -d $COMMIT
+    done
+fi

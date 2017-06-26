@@ -88,12 +88,14 @@ f.write(('\n').encode('utf-8'))
 for entry in reversed(entries):
 	lines = entry.changes()[:] #copy this so we don't modify the libraries
 	                           #version of it.
-	while (lines[0] == ''):
+
+	while ((len(lines) > 0) and (lines[0] == '')):
 		 del lines[0]
-	if ((lines[0].strip().upper())[0:8] != '[CHANGES'):
-		f.write(('  [changes brought forward from '+str(entry.version)+' by '+entry.author+' at '+entry.date+']\n').encode('utf-8'))
-	for line in lines:
-		f.write((line+'\n').encode('utf-8'))
+	if (len(lines) > 0):
+		if ((lines[0].strip().upper())[0:8] != '[CHANGES'):
+			f.write(('  [changes brought forward from '+str(entry.version)+' by '+entry.author+' at '+entry.date+']\n').encode('utf-8'))
+		for line in lines:
+			f.write((line+'\n').encode('utf-8'))
 
 f.write((' -- Raspbian forward porter <root@raspbian.org>  '+date+'\n').encode('utf-8'))
 f.write(('\n').encode('utf-8'))

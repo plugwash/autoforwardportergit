@@ -90,6 +90,7 @@ if ! git commit -m "Merge version $OLDVERSION and $DEBVERSION to produce $NEWVER
 fi
 git push -f origin $BRANCHNAME
 dcmd --orig cp /build/workingrepo/pool/*/$PACKAGEDIR/${PACKAGE}_${DEBVERSIONNOEPOCH}.dsc ..
+git status
 dgit -wgf build-source
 cd /build/tmp/makeforwardport
 rm *.changes
@@ -118,9 +119,8 @@ cd /build/autoforwardportergit/output/
 dcmd cp /build/tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_armhf.changes .
 cd /build/tmp/makeforwardport/tempgit
 /build/autoforwardportergit/setup-dgit-for-push
-#workaround 
-rm -rf ~/.cache/dgit
-PATH=/build/autoforwardportergit/dummy-dput:$PATH dgit push
+
+PATH=/build/autoforwardportergit/dummy-dput:$PATH dgit push --deliberately-not-fast-forward 
 
 cd /build/autoforwardportergit/output/
 dcmd cp /build/tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_armhf.changes .

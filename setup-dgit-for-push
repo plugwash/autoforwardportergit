@@ -16,3 +16,4 @@ git config dgit-distro.raspbian.archive-query "aptget:"
 git config dgit-suite.wheezy-staging.distro raspbian
 git config dgit-suite.jessie-staging.distro raspbian
 git config dgit-suite.stretch-staging.distro raspbian
+git config dgit-suite.buster-staging.distro raspbian

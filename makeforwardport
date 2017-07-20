@@ -32,6 +32,7 @@ mkdir makeforwardport
 cd makeforwardport
 git clone /build/git/${PACKAGEDIR} tempgit
 cd tempgit
+dgit setup-new-tree
 git config --local user.name "Raspbian forward pporter"
 git config --local user.email root@raspbian.org
 #make sure there is no current branch
@@ -46,7 +47,7 @@ BASETAG=`/build/autoforwardportergit/versiontotag ${BASEVERSION}`
 git branch -f debpsuedomerge $DEBTAG
 git checkout debpsuedomerge
 echo git merge -s ours --ff $BASETAG
-git merge -s ours --ff -m 'pseudomerge to tie together broken upstream history' $BASETAG
+git merge -s ours --ff -m 'pseudomerge to tie together broken upstream history' --allow-unrelated-histories $BASETAG
 
 git branch -f $BRANCHNAME $OLDTAG
 git checkout $BRANCHNAME
@@ -66,6 +67,10 @@ fi) || true
 
 if grep ^debian/control$ ../conflicts ; then
 	(/build/autoforwardportergit/fixupcontrol debian/control .. && git add debian/control) || true
+fi
+
+if grep ^debian/control.in$ ../conflicts ; then
+	(/build/autoforwardportergit/fixupcontrol debian/control.in .. && git add debian/control.in) || true
 fi
 
 

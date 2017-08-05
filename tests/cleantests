@@ -1,0 +1,14 @@
+#!/bin/bash -ev
+SCRIPTDIR=`dirname $(readlink -f $0)`
+set -o pipefail
+export AFPGCONFIG="$SCRIPTDIR"
+cd $SCRIPTDIR
+
+rm -f *.deb
+rm -f *.dsc
+rm -f *.?z
+rm -rf workingrepo/dists
+rm -rf workingrepo/pool
+rm -rf workingrepo/db
+rm -rf git
+

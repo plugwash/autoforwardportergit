@@ -1,0 +1,23 @@
+Origin: Test
+Label: Test
+Codename: test-staging
+Components: main
+Architectures: source
+Description: autoforwardportergit test repo
+
+Origin: Test
+Label: Test
+Codename: test
+Components: main
+Architectures: source
+Description: autoforwardportergit test repo
+
+
+Origin: Test
+Label: Test
+Codename: test-deb
+Components: main
+Architectures: source
+Description: autoforwardportergit test repo
+
+

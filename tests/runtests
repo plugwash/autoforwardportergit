@@ -1,0 +1,21 @@
+#!/bin/bash -ev
+SCRIPTDIR=`dirname $(readlink -f $0)`
+set -o pipefail
+export AFPGCONFIG="$SCRIPTDIR"
+cd $SCRIPTDIR
+./cleantests
+
+tar -zcf test1_1.orig.tar.gz test1_1.orig
+tar -zcf test1_2.orig.tar.gz test1_2.orig
+dpkg-source -b test1_1-1
+dpkg-source -b test1_1-1+test1
+dpkg-source -b test1_2-1
+
+cd workingrepo
+reprepro includedsc test-staging ../test1_1-1+test1.dsc
+reprepro includedsc test ../test1_1-1+test1.dsc
+reprepro includedsc test-deb ../test1_2-1.dsc
+dcmd cp -a ../test1_1-1.dsc pool/main/t/test1
+cd ..
+
+../dscdirtogitdriver test

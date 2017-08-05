@@ -1,0 +1,10 @@
+Description: a test patch
+Author: plugwash <plugwash@afpgtest>
+
+--- test1-1.orig/file1
++++ test1-1/file1
+@@ -1 +1,2 @@
+-this is a test
+\ No newline at end of file
++this is a test
++this is more of a test

@@ -4,6 +4,7 @@ Codename: test-staging
 Components: main
 Architectures: source
 Description: autoforwardportergit test repo
+DscIndices: Sources Release . .gz
 
 Origin: Test
 Label: Test
@@ -11,7 +12,7 @@ Codename: test
 Components: main
 Architectures: source
 Description: autoforwardportergit test repo
-
+DscIndices: Sources Release . .gz
 
 Origin: Test
 Label: Test
@@ -19,5 +20,5 @@ Codename: test-deb
 Components: main
 Architectures: source
 Description: autoforwardportergit test repo
-
+DscIndices: Sources Release . .gz
 

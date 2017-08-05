@@ -5,6 +5,7 @@ export AFPGCONFIG="$SCRIPTDIR"
 cd $SCRIPTDIR
 ./cleantests
 
+mkdir tmp
 tar -zcf test1_1.orig.tar.gz test1_1.orig
 tar -zcf test1_2.orig.tar.gz test1_2.orig
 dpkg-source -b test1_1-1
@@ -19,3 +20,4 @@ dcmd cp -a ../test1_1-1.dsc pool/main/t/test1
 cd ..
 
 ../dscdirtogitdriver test
+../branchpointer test

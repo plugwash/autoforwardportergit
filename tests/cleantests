@@ -11,4 +11,4 @@ rm -rf workingrepo/dists
 rm -rf workingrepo/pool
 rm -rf workingrepo/db
 rm -rf git
-
+rm -rf tmp

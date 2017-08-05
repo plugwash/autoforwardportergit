@@ -55,43 +55,34 @@ process_pkg_list() {
 
 set -o pipefail
 
+SCRIPTDIR=`dirname $(readlink -f $0)`
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE main:outputdir main:AFPGCONFIG main:localmarker main:revertmarker | . /dev/stdin
+
 MAINSUITE=$1
 #update working repo
-cd /build/workingrepo
+cd $workingrepodir
 
-#if [[ $2 != noupdate ]] ; then
-#    reprepro -V update ${MAINSUITE} ${MAINSUITE}-staging ${MAINSUITE}-deb
-#fi
-#update local source archive, unlike the main public source archive this
-#one is intended to only contain verified source packages.
-#rsync -rv --link-dest=/build/workingrepo/pool --exclude='*.*deb' --ignore-existing /build/workingrepo/pool/ /build/sourcearchive
-
-#echo check source archive and generate debdiffs
-#cd /build/sourcearchive
-#TMPDIR=/build/tmp/debdiff/ /home/plugwash/oodfinder/sourcearchivechecker +rpi$+rvt /build/debdiffs/
-
-
-for SUITE in ${MAINSUITE} ${MAINSUITE}-staging ${MAINSUITE}-deb ; do
-    sources=/build/workingrepo/dists/${SUITE}/main/source/Sources
-    cat $sources | process_pkg_list > /build/tmp/sources-${SUITE}-processed
+for SUITE in ${MAINSUITE} ${STAGINGSUITE} ${UPSTREAMSUITE} ; do
+    sources=$workingrepodir/dists/${SUITE}/main/source/Sources
+    cat $sources | process_pkg_list > $tmp/sources-${SUITE}-processed
 done
 
-for PACKAGE in $(cat /build/autoforwardportergit/whitelist.${MAINSUITE}) ; do
+for PACKAGE in $(cat $AFPGCONFIG/whitelist.${MAINSUITE}) ; do
     echo ${PACKAGE}
-    MAINVERSION=`grep ^${PACKAGE}" " /build/tmp/sources-${MAINSUITE}-processed | cut -d " " -f 2`
-    STAGINGVERSION=`grep ^${PACKAGE}" " /build/tmp/sources-${MAINSUITE}-staging-processed | cut -d " " -f 2`
-    DEBVERSION=`grep ^${PACKAGE}" " /build/tmp/sources-${MAINSUITE}-deb-processed | cut -d " " -f 2`
+    MAINVERSION=`grep ^${PACKAGE}" " $tmp/sources-${MAINSUITE}-processed | cut -d " " -f 2`
+    STAGINGVERSION=`grep ^${PACKAGE}" " $tmp/sources-${STAGINGSUITE}-processed | cut -d " " -f 2`
+    DEBVERSION=`grep ^${PACKAGE}" " $tmp/sources-${UPSTREAMSUITE}-processed | cut -d " " -f 2`
     echo ${PACKAGE}
     echo main version $MAINVERSION
     echo staging version $STAGINGVERSION
     echo deb version $DEBVERSION
-    if [[ $STAGINGVERSION == *rpi* ]] ; then
-	NEWVERSION=${DEBVERSION}+rpi1
+    if [[ $STAGINGVERSION == *${localmarker}* ]] ; then
+	NEWVERSION=${DEBVERSION}${localmarker}1
 	OLDVERSION=${STAGINGVERSION}
     elif [[ $MAINVERSION == *rpi* ]] ; then
-	NEWVERSION=${DEBVERSION}+rpi1
+	NEWVERSION=${DEBVERSION}${localmarker}
 	OLDVERSION=${MAINVERSION}
-    elif [[ $STAGINGVERSION == *rvt* ]] ; then
+    elif [[ $STAGINGVERSION == *${revertmarker}* ]] ; then
 	if dpkg --compare-versions $STAGINGVERSION lt $DEBVERSION ; then
 	    echo no need to forward port rvt version as debian version is higher
 	    continue
@@ -103,8 +94,8 @@ for PACKAGE in $(cat /build/autoforwardportergit/whitelist.${MAINSUITE}) ; do
 	echo and no rvt marker found in staging version.
 	continue
     fi
-    MAINBASEVERSION=`echo $MAINVERSION | sed 's/+rpi[0-9]*//' | sed 's/+rvt//'`
-    STAGINGBASEVERSION=`echo $STAGINGVERSION | sed 's/+rpi[0-9]*//' | sed 's/+rvt//'`
+    MAINBASEVERSION=`echo $MAINVERSION | sed "s/${localmarker}[0-9]*//" | sed "s/${revertmarker}[0-9]*//"`
+    STAGINGBASEVERSION=`echo $STAGINGVERSION | sed "s/${localmarker}[0-9]*//" | sed "s/${revertmarker}[0-9]*//"`
     if dpkg --compare-versions $MAINBASEVERSION lt $DEBVERSION && dpkg --compare-versions $STAGINGBASEVERSION le $DEBVERSION; then
 	echo version ordering looks ok for forward porting
 	
@@ -114,8 +105,10 @@ for PACKAGE in $(cat /build/autoforwardportergit/whitelist.${MAINSUITE}) ; do
 	    #with our suffix on the end lower than our old version, we need
 	    #to take care of that.
 	    
-	    STAGINGPREMARKERVERSION=`echo $STAGINGVERSION | sed 's/+rpi[0-9]*.*//' | sed 's/+rvt.*//'`
-	    STAGINGVERSIONMARKER=`echo $STAGINGVERSION | grep -Eo '\+(rvt|rpi[0-9]*)'`
+	    #there may be some escaping issues in this code, needs testing.
+	
+	    STAGINGPREMARKERVERSION=`echo $STAGINGVERSION | sed "s/${localmarker}[0-9]*.*//" | sed "s/${revertmarker}[0-9]*.*//"`
+	    STAGINGVERSIONMARKER=`echo $STAGINGVERSION | grep -Eo "(${localmarker}|\${revertmarker})[0-9]*"`
 	    STAGINGVERSIONUPTOANDINCLUDINGMARKER=${STAGINGPREMARKERVERSION}${STAGINGVERSIONMARKER}
 	    NEWDEBSUFFIX=${DEBVERSION:${#STAGINGPREMARKERVERSION}}
 	    NEWVERSION=${STAGINGVERSIONUPTOANDINCLUDINGMARKER}${NEWDEBSUFFIX}

@@ -18,11 +18,6 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
-#scan a sources file and look for source packages where the version number
-#of the latest version contains +rpi1 and produce a filter list for reprepro
-
-#First command line parameter is the Sources file to scan
-#generated filter list is produced on standard output
 
 #based on code by adsb from 
 #http://anonscm.debian.org/gitweb/?p=mirror/britney1.git;a=blob_plain;f=britney;h=094ec121d5bea3e68af76c493f2b9d91d734f45e;hb=HEAD

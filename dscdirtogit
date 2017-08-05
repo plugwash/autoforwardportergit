@@ -1,0 +1,166 @@
+#!/usr/bin/python3
+
+#Copyright (c) 2016-2017 Peter Michael Green
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy of
+#this software and associated documentation files (the "Software"), to deal in
+#the Software without restriction, including without limitation the rights to
+#use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+#of the Software, and to permit persons to whom the Software is furnished to do
+#so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+#THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
+
+
+
+from debian.debian_support import Version
+from debian.deb822 import Dsc
+from debian.changelog import Changelog
+from git import Repo
+import glob
+import sys
+import re
+from os.path import basename
+import subprocess
+
+
+def versiontotag(version):
+	tag = str(version)
+	tag = tag.replace(":","%")
+	tag = tag.replace("~","_")
+	tag = re.sub('\.(?=\.|$|lock$)','.#',tag)
+	return tag
+
+foo = Version('2.0.0')
+bar = Version('1:2.2')
+
+localversionmarkers = sys.argv[-1].split('$')
+
+versions = []
+
+for dscdir in sys.argv[1:-1]:
+	for filename in glob.glob(sys.argv[1]+'/*.dsc'):
+		#print(filename)
+		f = open(filename,'rb')
+		dsc = Dsc(f)
+		f.close()
+		version = Version(dsc['version'])
+		versions.append((version,filename))
+
+versions.sort()
+
+repo = Repo('.');
+
+def tryfindtag(repo,tagname):
+	try:
+		tag = repo.tags[tagname]
+		return tag
+	except:
+		return None
+
+def tryfindcommit(githash):
+	try:
+		commit = repo.commit(githash)
+		return commit
+	except:
+		return None
+
+for (version,filename) in versions:
+	print(filename, flush = True)
+	print(version, flush = True)
+	tagname = versiontotag(version)
+	if tryfindtag(repo,tagname) == None:
+		#tag not found, that means we have to import it
+		print('starting import process for '+str(version)+' tag name '+tagname, flush = True)
+		
+		#make sure no branch is checked out
+		command = ['git','checkout','-q','--detach']
+		print(command, flush=True)
+		if (subprocess.call(command) != 0): print('ignoring error, probablly a newly created repo')
+			
+		parenttagname = ''
+		parenttag = None
+		
+		#handle packages that use dgit in Debian
+		f = open(filename,'rb')
+		dscusesdgit = False
+		sourcepackagename = ''
+		for line in f:
+			line = line.rstrip()
+			linesplit = line.split(b' ')
+			#print(repr(linesplit))
+			if (linesplit[0]==b'Dgit:'):
+				dscusesdgit = True
+				dscgitref = linesplit[1].decode('ascii')
+			if (linesplit[0]==b'Source:'):
+				sourcepackagename = linesplit[1].decode('ascii')
+		f.close()
+		
+		commit = None
+		if (dscusesdgit):
+			fetchsources = [('https://git.dgit.debian.org/'+sourcepackagename+'.git','debian/'),('https://git.dgit.debian.org/'+sourcepackagename+'.git','archive/debian/')]
+			commit = tryfindcommit(dscgitref);
+			for (fetchsourceurl,fetchsourcepath) in fetchsources:
+				if (commit != None): break
+				subprocess.call(['git','fetch',fetchsourceurl,fetchsourcepath+tagname])
+				commit = tryfindcommit(dscgitref);
+		else:
+			if (subprocess.call(['rm','-rf','extract']) != 0): exit(1)
+			if (subprocess.call(['dpkg-source','-x',filename,'extract']) != 0): exit(1)
+			f = open('extract/debian/changelog','rb');
+			changelog = Changelog(f)
+			f.close()
+			local = any(x in str(version) for x in localversionmarkers)
+			for cversion in changelog.versions:
+				if (cversion != version):
+					ctagname = versiontotag(cversion)
+					ctag = tryfindtag(repo,ctagname)
+					if ctag != None:
+						parenttagname = ctagname
+						parenttag = ctag
+						break
+					if local:
+						print('immediate parent '+str(cversion)+' for local version '+str(version)+' not found')
+						exit(1)
+		print(parenttagname)
+		if parenttag == None:
+			branchprefix = '+'
+		else:
+			branchprefix = '..'
+			command = ['git','branch','-f','workingbranch',parenttagname]
+			print(command, flush=True)
+			if (subprocess.call(command) != 0): exit(1)
+		
+		
+		if (dscusesdgit and (commit == None)):
+			print('cannot find commit '+dscgitref+' Referenced by Dgit: in dsc', flush=True)
+			#exit(1)
+		#should no longer be needed with recent dgit
+		#if (subprocess.call(['dcmd','cp',filename,'..']) != 0): exit(1)
+		#filename = '../'+basename(filename)
+		command = ['dgit','import-dsc',filename,branchprefix+'workingbranch']
+		print(command, flush=True)
+		if (subprocess.call(command) != 0): exit(1)
+		
+		branch = repo.heads.workingbranch
+		authorname = branch.commit.author.name.strip()
+		#print('author name: ',repr(authorname))
+		if (authorname == ''):
+			print('commit has no author, resetting author')
+			command = ['git','checkout','-q','workingbranch']
+			print(command, flush=True)
+			if (subprocess.call(command) != 0): exit(1)
+			command = ['git','commit','--amend','--reset-author','--no-edit']
+			print(command, flush=True)
+			if (subprocess.call(command) != 0): exit(1)
+		branch = repo.heads.workingbranch
+		repo.create_tag(tagname,branch)
+

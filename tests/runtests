@@ -16,8 +16,16 @@ cd workingrepo
 reprepro includedsc test-staging ../test1_1-1+test1.dsc
 reprepro includedsc test ../test1_1-1+test1.dsc
 reprepro includedsc test-deb ../test1_2-1.dsc
-dcmd cp -a ../test1_1-1.dsc pool/main/t/test1
 cd ..
+#this first invocation should fail because base version is not found.
+! ../dscdirtogitdriver test
 
+#give it the needed base version
+dcmd cp -a test1_1-1.dsc workingrepo/pool/main/t/test1
+
+#now it should succeed
 ../dscdirtogitdriver test
+
 ../branchpointer test
+
+echo tests finished succesfully

@@ -20,7 +20,6 @@ for PACKAGE in $(cat $AFPGCONFIG/whitelist.import) ; do
     fi
     git config --local user.name "$importname"
     git config --local user.email "$importemail"
-    echo ${SCRIPTDIR}/dscdirtogit $workingrepo/pool/*/$PACKAGEDIR +rpi$+rvt 
-    ${SCRIPTDIR}/dscdirtogit $workingrepo/pool/*/$PACKAGEDIR +rpi$+rvt 
-
+    echo ${SCRIPTDIR}/dscdirtogit $workingrepo/pool/*/$PACKAGEDIR $localmarker'$'$revertmarker
+    ${SCRIPTDIR}/dscdirtogit $workingrepo/pool/*/$PACKAGEDIR $localmarker'$'$revertmarker 
 done

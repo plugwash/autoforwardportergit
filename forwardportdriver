@@ -117,7 +117,7 @@ for PACKAGE in $(cat $AFPGCONFIG/whitelist.${MAINSUITE}) ; do
 
 	NEWVERSIONNOEPOCH=`echo ${NEWVERSION} | sed -e s/^[^:]://`
 	if [ ! -e $outputdir/${PACKAGE}_${NEWVERSIONNOEPOCH}.log ] ; then
-	    ($SCRIPTDIR/makeforwardport $PACKAGE $OLDVERSION $DEBVERSION $NEWVERSION $STAGINGSUITE $WORKINGBRANCH || true) 2>&1 | tee /build/autoforwardportergit/output/${PACKAGE}_${NEWVERSIONNOEPOCH}.log
+	    ($SCRIPTDIR/makeforwardport $PACKAGE $OLDVERSION $DEBVERSION $NEWVERSION $STAGINGSUITE $WORKINGBRANCH || true) 2>&1 | tee $outputdir/${PACKAGE}_${NEWVERSIONNOEPOCH}.log
 	fi
     fi
 

@@ -23,11 +23,16 @@ config['main']['dodgitpush'] = 'no';
 config['main']['AFPGCONFIG'] = configdir;
 config.read(configfile)
 
+pathconfigsettings = set(["workingrepo","gitdir","tmp","outputdir","netrcfile"])
+
 def readconfigentry(section,item):
-	sys.stderr.write('reading config entry '+item+' from section '+section+"\n")
+	#sys.stderr.write('reading config entry '+item+' from section '+section+"\n")
 	value = config[section][item];
-	if ((item == 'workingrepo') | (item == 'gitdir') | (item == 'tmp') | (item  == 'outputdir')):
-		value = os.path.join(configdir,value)
+	if item.lower() in pathconfigsettings:
+		if value[0:2] == '~/':
+			value = os.path.join(os.getenv('HOME'),value[2:])
+		else:
+			value = os.path.join(configdir,value)
 	return value
 
 if __name__ == '__main__': #if we are being run directly rather than imported

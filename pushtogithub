@@ -1,4 +1,7 @@
 #!/bin/bash -e
+SCRIPTDIR=`dirname $(readlink -f $0)`
+source <($SCRIPTDIR/afpg_readconfig.py main:gitdir main:tmp main:AFPGCONFIG main:netrcfile)
+$SCRIPTDIR/afpg_readconfig.py          main:gitdir main:tmp main:AFPGCONFIG main:netrcfile
 
 function pushifexists {
     exists=`git show-ref $1` || true
@@ -7,7 +10,7 @@ function pushifexists {
     fi
 }
 
-for PACKAGE in $(cat /build/dscdirtogit/whitelist ) ; do
+for PACKAGE in $(cat $AFPGCONFIG/whitelist.pushtogithub ) ; do
     #| grep -v glibc
     echo processing $PACKAGE
     if [[ $PACKAGE == lib* ]]; then
@@ -16,13 +19,16 @@ for PACKAGE in $(cat /build/dscdirtogit/whitelist ) ; do
         PACKAGEDIR=${PACKAGE:0:1}/$PACKAGE
     fi
 
-    cd /build/git/$PACKAGEDIR
+    cd $gitdir/$PACKAGEDIR
 
     #github doesn't like + signs in repo names, use - instead (could potentially cause conflicts but probablly won't)
     GITHUBREPO=$(echo $PACKAGE | sed s/+/-/)
-
-    /build/dscdirtogit/fixup-authorless-commits
-    curl --netrc-file ~/github-login https://api.github.com/orgs/raspbian-packages/repos -d '{"name":"'$GITHUBREPO'"}'
+    
+    #this shouldn't be needed anymore, it was a fixup for a problem that
+    #has been fixed in github.
+    #/build/dscdirtogit/fixup-authorless-commits
+    
+    curl --netrc-file $netrcfile https://api.github.com/orgs/raspbian-packages/repos -d '{"name":"'$GITHUBREPO'"}'
     git remote rm github || true
     #git remote add github git@github.com:raspbian-packages/$GITHUBREPO.git
     git remote add github https://github.com/raspbian-packages/$GITHUBREPO.git
@@ -34,15 +40,17 @@ for PACKAGE in $(cat /build/dscdirtogit/whitelist ) ; do
         git push -u github `git tag | grep -v 5.`
     else
         git push -u github --tags
-        pushifexists stretch
-        pushifexists stretch-staging
-        pushifexists stretch-deb
     fi
 
-    pushifexists jessie
-    pushifexists jessie-staging
-    pushifexists jessie-deb
-    pushifexists wheezy
-    pushifexists wheezy-staging
-    pushifexists wheezy-deb
+    for MAINSUITE in "$@"; do
+        if [[ $PACKAGE == libreoffice ]] && ([[ $MAINSUITE == stretch ]] || $MAINSUITE == buster ); then
+            #unfortunately stretch's libreoffice can't be pushed to github due to
+            #large files.
+        else
+            source <($SCRIPTDIR/afpg_readconfig.py $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE)
+            pushifexists $MAINSUITE
+            pushifexists $STAGINGSUITE
+            pushifexists $UPSTREAMSUITE
+        fi
+    done
 done

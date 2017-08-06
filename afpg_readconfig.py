@@ -24,8 +24,9 @@ config['main']['AFPGCONFIG'] = configdir;
 config.read(configfile)
 
 def readconfigentry(section,item):
+	sys.stderr.write('reading config entry '+item+' from section '+section+"\n")
 	value = config[section][item];
-	if ((item == 'workingrepo') | (item == 'gitdir') | (item == 'tmp')):
+	if ((item == 'workingrepo') | (item == 'gitdir') | (item == 'tmp') | (item  == 'outputdir')):
 		value = os.path.join(configdir,value)
 	return value
 

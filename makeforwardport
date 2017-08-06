@@ -1,19 +1,24 @@
 #!/bin/bash -ev
 set -o pipefail
-echo makeforwardport starting command: makeforwardport $1 $2 $3 $4 $5
+SCRIPTDIR=`dirname $(readlink -f $0)`
+echo makeforwardport starting command: makeforwardport $1 $2 $3 $4 $5 $6
 PACKAGE=$1
 OLDVERSION=$2
 DEBVERSION=$3
 NEWVERSION=$4
 TARGETSUITE=$5
+BRANCHNAME=$6
+source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:forwardportname main:forwardportemail main:outputdir)
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:forwardportname main:forwardportemail main:outputdir
+
 
 NEWVERSIONNOEPOCH=`echo ${NEWVERSION} | sed -e s/^[^:]://`
 OLDVERSIONNOEPOCH=`echo ${OLDVERSION} | sed -e s/^[^:]://`
 DEBVERSIONNOEPOCH=`echo ${DEBVERSION} | sed -e s/^[^:]://`
 
-NEWTAG=`/build/autoforwardportergit/versiontotag ${NEWVERSION}`
-OLDTAG=`/build/autoforwardportergit/versiontotag ${OLDVERSION}`
-DEBTAG=`/build/autoforwardportergit/versiontotag ${DEBVERSION}`
+NEWTAG=`$SCRIPTDIR/versiontotag ${NEWVERSION}`
+OLDTAG=`$SCRIPTDIR/versiontotag ${OLDVERSION}`
+DEBTAG=`$SCRIPTDIR/versiontotag ${DEBVERSION}`
 
 if [[ $PACKAGE == lib* ]]; then
     PACKAGEDIR=${PACKAGE:0:4}/$PACKAGE
@@ -21,16 +26,12 @@ else
     PACKAGEDIR=${PACKAGE:0:1}/$PACKAGE
 fi
 
-DEBDIFF=/build/debdiffs/*/$PACKAGEDIR/${PACKAGE}_${OLDVERSIONNOEPOCH}.debdiff
-
-cd /build/tmp/
-
-BRANCHNAME=`echo $TARGETSUITE | cut -d '-' -f 1`-working
+cd $tmp
 
 rm -rf makeforwardport
 mkdir makeforwardport
 cd makeforwardport
-git clone /build/git/${PACKAGEDIR} tempgit
+git clone $gitdir/${PACKAGEDIR} tempgit
 cd tempgit
 dgit setup-new-tree
 git config --local user.name "Raspbian forward pporter"
@@ -39,10 +40,8 @@ git config --local user.email root@raspbian.org
 git checkout -q --detach || true
 
 git show ${OLDTAG}:debian/changelog > ../c1
-#git show ${DEBTAG}:debian/changelog > ../c2
-#BASEVERSION=`/build/autoforwardportergit/findchangelogcommonancestor ../c1 ../c2`
-BASEVERSION=`/build/autoforwardportergit/findchangelogunmarkedversion ../c1 +rpi$+rvt`
-BASETAG=`/build/autoforwardportergit/versiontotag ${BASEVERSION}`
+BASEVERSION=`$SCRIPTDIR/findchangelogunmarkedversion ../c1 $localmarker'$'$revertmarker`
+BASETAG=`$SCRIPTDIR/versiontotag ${BASEVERSION}`
 
 git branch -f debpsuedomerge $DEBTAG
 git checkout debpsuedomerge
@@ -54,10 +53,10 @@ git checkout $BRANCHNAME
 git config merge.conflictstyle diff3
 git merge debpsuedomerge || true #when a merge has conflicts git exits with a nonzero status code
 git diff --name-only --diff-filter=U > ../conflicts
-/build/autoforwardportergit/fixupchangelog debian/changelog $NEWVERSION $TARGETSUITE "`date -uR`" $PACKAGE
+$SCRIPTDIR/fixupchangelog debian/changelog $NEWVERSION $TARGETSUITE "`date -uR`" $PACKAGE
 git add debian/changelog
 if grep ^debian/patches/series$ ../conflicts ; then
-	/build/autoforwardportergit/fixupseries debian/patches/series
+	$SCRIPTDIR/fixupseries debian/patches/series
 	git add debian/patches/series
 fi
 (if grep ^debian/control.md5sum$ ../conflicts ; then
@@ -66,18 +65,18 @@ fi
 fi) || true
 
 if grep ^debian/control$ ../conflicts ; then
-	(/build/autoforwardportergit/fixupcontrol debian/control .. && git add debian/control) || true
+	($SCRIPTDIR/fixupcontrol debian/control .. && git add debian/control) || true
 fi
 
 if grep ^debian/control.in$ ../conflicts ; then
-	(/build/autoforwardportergit/fixupcontrol debian/control.in .. && git add debian/control.in) || true
+	($SCRIPTDIR/fixupcontrol debian/control.in .. && git add debian/control.in) || true
 fi
 
 
 #make sure no branch is checked out in our destination repo so that the push doesn't fail
-cd /build/git/${PACKAGEDIR}
+cd $gitdir/${PACKAGEDIR}
 git checkout -q --detach || true
-cd /build/tmp/makeforwardport/tempgit
+cd $tmp/makeforwardport/tempgit
 git push -f origin $BRANCHNAME
 
 if ! git commit -m "Merge version $OLDVERSION and $DEBVERSION to produce $NEWVERSION" ; then
@@ -93,14 +92,6 @@ if ! git commit -m "Merge version $OLDVERSION and $DEBVERSION to produce $NEWVER
     git push -f origin $BRANCHNAME
     exit 1
 fi
-git push -f origin $BRANCHNAME
-dcmd --orig cp /build/workingrepo/pool/*/$PACKAGEDIR/${PACKAGE}_${DEBVERSIONNOEPOCH}.dsc ..
-git status
-dgit -wgf build-source
-cd /build/tmp/makeforwardport
-rm *.changes
-
-#dpkg-source -x  --skip-patches /build/workingrepo/pool/*/$PACKAGEDIR/${PACKAGE}_${DEBVERSIONNOEPOCH}.dsc extract
 
 #defuzz patches (not yet ported to git)
 #cd ..
@@ -118,16 +109,29 @@ rm *.changes
 #mv ../extract.defuzz/debian/patches debian/ || true
 #rm -rf ../extract.defuzz
 
-sbuild -snA --force-orig-source -d ${TARGETSUITE} ${PACKAGE}_${NEWVERSIONNOEPOCH}.dsc
-cd /build/autoforwardportergit/output/
-#we want to make sure that the result of sbuild gets preserved even dgit push fails for some reason.
-dcmd cp /build/tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_armhf.changes .
-cd /build/tmp/makeforwardport/tempgit
-/build/autoforwardportergit/setup-dgit-for-push
 
-PATH=/build/autoforwardportergit/dummy-dput:$PATH dgit push --deliberately-not-fast-forward 
+git push -f origin $BRANCHNAME
+dcmd --orig cp $workingrepo/pool/*/$PACKAGEDIR/${PACKAGE}_${DEBVERSIONNOEPOCH}.dsc ..
+git status
+#FIXME: the command below tries to access the internet and fails if it can't
+#which is seriously subobtimal.
+dgit -wgf build-source
+cd $tmp/makeforwardport
+rm *.changes
 
-cd /build/autoforwardportergit/output/
-dcmd cp /build/tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_armhf.changes .
-
+#disable sbuild for now, this needs to be made a configuration option
 #going forward it would be good to have more inteligent application of --force-orig-source, not a massive priority for now though
+#sbuild -snA --force-orig-source -d ${TARGETSUITE} ${PACKAGE}_${NEWVERSIONNOEPOCH}.dsc
+#cd $OUTPUTDIR
+#we want to make sure that the result of sbuild gets preserved even dgit push fails for some reason.
+#dcmd cp $tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_armhf.changes .
+#cd $tmp/makeforwardport/tempgit
+
+#disable for now, this needs to be made a configuration option
+#$SCRIPTDIR/setup-dgit-for-push
+
+#PATH=$SCRIPTDIR/dummy-dput:$PATH dgit push --deliberately-not-fast-forward 
+
+#cd /build/autoforwardportergit/output/
+#dcmd cp $tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_armhf.changes .
+

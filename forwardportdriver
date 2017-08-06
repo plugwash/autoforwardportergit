@@ -1,5 +1,5 @@
 #!/bin/bash -ev
-#Copyright (c) 2009-2014 Peter M. Green and Adam D. Barratt
+#Copyright (c) 2009-2017 Peter M. Green and Adam D. Barratt
 #
 #Permission is hereby granted, free of charge, to any person obtaining a copy of
 #this software and associated documentation files (the "Software"), to deal in
@@ -17,12 +17,6 @@
 #LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
-
-#scan a sources file and look for source packages where the version number
-#of the latest version contains +rpi1 and produce a filter list for reprepro
-
-#First command line parameter is the Sources file to scan
-#generated filter list is produced on standard output
 
 #based on code by adsb from 
 #http://anonscm.debian.org/gitweb/?p=mirror/britney1.git;a=blob_plain;f=britney;h=094ec121d5bea3e68af76c493f2b9d91d734f45e;hb=HEAD
@@ -55,15 +49,16 @@ process_pkg_list() {
 
 set -o pipefail
 
-SCRIPTDIR=`dirname $(readlink -f $0)`
-$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE main:outputdir main:AFPGCONFIG main:localmarker main:revertmarker | . /dev/stdin
-
 MAINSUITE=$1
+
+SCRIPTDIR=`dirname $(readlink -f $0)`
+source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE $MAINSUITE:WORKINGBRANCH main:outputdir main:AFPGCONFIG main:localmarker main:revertmarker)
+
 #update working repo
-cd $workingrepodir
+cd $workingrepo
 
 for SUITE in ${MAINSUITE} ${STAGINGSUITE} ${UPSTREAMSUITE} ; do
-    sources=$workingrepodir/dists/${SUITE}/main/source/Sources
+    sources=$workingrepo/dists/${SUITE}/main/source/Sources
     cat $sources | process_pkg_list > $tmp/sources-${SUITE}-processed
 done
 
@@ -79,7 +74,7 @@ for PACKAGE in $(cat $AFPGCONFIG/whitelist.${MAINSUITE}) ; do
     if [[ $STAGINGVERSION == *${localmarker}* ]] ; then
 	NEWVERSION=${DEBVERSION}${localmarker}1
 	OLDVERSION=${STAGINGVERSION}
-    elif [[ $MAINVERSION == *rpi* ]] ; then
+    elif [[ $MAINVERSION == *${localmarker}* ]] ; then
 	NEWVERSION=${DEBVERSION}${localmarker}
 	OLDVERSION=${MAINVERSION}
     elif [[ $STAGINGVERSION == *${revertmarker}* ]] ; then
@@ -87,11 +82,11 @@ for PACKAGE in $(cat $AFPGCONFIG/whitelist.${MAINSUITE}) ; do
 	    echo no need to forward port rvt version as debian version is higher
 	    continue
 	fi
-	NEWVERSION=${DEBVERSION}+rvt
+	NEWVERSION=${DEBVERSION}${revertmarker}
 	OLDVERSION=${STAGINGVERSION}
     else
-	echo no rpi version marker found in main version or staging version
-	echo and no rvt marker found in staging version.
+	echo no ${localmarker} version marker found in main version or staging version
+	echo and no ${revertmarker} marker found in staging version.
 	continue
     fi
     MAINBASEVERSION=`echo $MAINVERSION | sed "s/${localmarker}[0-9]*//" | sed "s/${revertmarker}[0-9]*//"`
@@ -121,8 +116,8 @@ for PACKAGE in $(cat $AFPGCONFIG/whitelist.${MAINSUITE}) ; do
 	fi
 
 	NEWVERSIONNOEPOCH=`echo ${NEWVERSION} | sed -e s/^[^:]://`
-	if [ ! -e /build/autoforwardportergit/output/${PACKAGE}_${NEWVERSIONNOEPOCH}.log ] ; then
-	    (/build/autoforwardportergit/makeforwardport $PACKAGE $OLDVERSION $DEBVERSION $NEWVERSION $MAINSUITE-staging || true) 2>&1 | tee /build/autoforwardportergit/output/${PACKAGE}_${NEWVERSIONNOEPOCH}.log
+	if [ ! -e $outputdir/${PACKAGE}_${NEWVERSIONNOEPOCH}.log ] ; then
+	    ($SCRIPTDIR/makeforwardport $PACKAGE $OLDVERSION $DEBVERSION $NEWVERSION $STAGINGSUITE $WORKINGBRANCH || true) 2>&1 | tee /build/autoforwardportergit/output/${PACKAGE}_${NEWVERSIONNOEPOCH}.log
 	fi
     fi
 

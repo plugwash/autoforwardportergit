@@ -28,4 +28,7 @@ dcmd cp -a test1_1-1.dsc workingrepo/pool/main/t/test1
 
 ../branchpointer test
 
+#now lets try some actual forward porting
+../forwardportdriver test
+
 echo tests finished succesfully

@@ -52,6 +52,7 @@ set -o pipefail
 MAINSUITE=$1
 
 SCRIPTDIR=`dirname $(readlink -f $0)`
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE $MAINSUITE:WORKINGBRANCH main:outputdir main:AFPGCONFIG main:localmarker main:revertmarker
 source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE $MAINSUITE:WORKINGBRANCH main:outputdir main:AFPGCONFIG main:localmarker main:revertmarker)
 
 #update working repo

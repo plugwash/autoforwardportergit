@@ -115,7 +115,7 @@ dcmd --orig cp $workingrepo/pool/*/$PACKAGEDIR/${PACKAGE}_${DEBVERSIONNOEPOCH}.d
 git status
 #FIXME: the command below tries to access the internet and fails if it can't
 #which is seriously subobtimal.
-dgit -wgf build-source
+dgit -wgf --quilt=auto build-source
 cd $tmp/makeforwardport
 rm *.changes
 

@@ -6,6 +6,7 @@ cd $SCRIPTDIR
 ./cleantests
 
 mkdir tmp
+mkdir output
 tar -zcf test1_1.orig.tar.gz test1_1.orig
 tar -zcf test1_2.orig.tar.gz test1_2.orig
 dpkg-source -b test1_1-1
@@ -26,9 +27,25 @@ dcmd cp -a test1_1-1.dsc workingrepo/pool/main/t/test1
 #now it should succeed
 ../dscdirtogitdriver test
 
+#test branchpointer
 ../branchpointer test
 
 #now lets try some actual forward porting
+../forwardportdriver test
+
+#check we actually produced a result
+[ -f output/test1_2-1+test1.dsc ]
+
+#now for a different case, test the case where we need to generate a version
+#with the marker in the middle
+dpkg-source -b test1_1-1+debu1
+cd workingrepo
+reprepro removesrc test-deb test1
+reprepro includedsc test-deb ../test1_1-1+debu1.dsc
+cd ..
+
+../dscdirtogitdriver test
+
 ../forwardportdriver test
 
 echo tests finished succesfully

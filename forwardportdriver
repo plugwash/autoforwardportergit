@@ -102,10 +102,14 @@ for PACKAGE in $(cat $AFPGCONFIG/whitelist.${MAINSUITE}) ; do
 	    #to take care of that.
 	    
 	    #there may be some escaping issues in this code, needs testing.
-	
+	    echo "$localmarker" | sed 's/+/\\+/g'
+	    localmarkerescaped="$(echo "$localmarker" | sed 's/+/\\+/g')"
+	    revertmarkerescaped="$(echo "$revertmarker" | sed 's/+/\\+/g')"
 	    STAGINGPREMARKERVERSION=`echo $STAGINGVERSION | sed "s/${localmarker}[0-9]*.*//" | sed "s/${revertmarker}[0-9]*.*//"`
-	    STAGINGVERSIONMARKER=`echo $STAGINGVERSION | grep -Eo "(${localmarker}|\${revertmarker})[0-9]*"`
-	    STAGINGVERSIONUPTOANDINCLUDINGMARKER=${STAGINGPREMARKERVERSION}${STAGINGVERSIONMARKER}
+	    echo 1 "$localmarkerescaped"
+	    echo 2 "$revertmarkerescaped"
+	    STAGINGVERSIONMARKER=`echo $STAGINGVERSION | grep -Eo "(${localmarkerescaped}|${revertmarkerescaped})[0-9]*"`
+	    STAGINGVERSIONUPTOANDINCLUDINGMARKER="${STAGINGPREMARKERVERSION}${STAGINGVERSIONMARKER}"
 	    NEWDEBSUFFIX=${DEBVERSION:${#STAGINGPREMARKERVERSION}}
 	    NEWVERSION=${STAGINGVERSIONUPTOANDINCLUDINGMARKER}${NEWDEBSUFFIX}
 	fi

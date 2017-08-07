@@ -1,0 +1,5 @@
+test1 (1-1+debu1) unstable; urgency=medium
+
+  * Dummy package for autoforwardportergit testing.
+
+ -- plugwash <plugwash@afpgtest>  Sat, 05 Aug 2017 10:48:49 +0100

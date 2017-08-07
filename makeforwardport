@@ -122,13 +122,11 @@ if [[ $dosbuild == yes ]]; then
     rm *.changes
     #going forward it would be good to have more inteligent application of --force-orig-source, not a massive priority for now though
     sbuild -snA --force-orig-source -d ${TARGETSUITE} ${PACKAGE}_${NEWVERSIONNOEPOCH}.dsc
-    cd $OUTPUTDIR
-    #we want to make sure that the result of sbuild gets preserved even dgit push fails for some reason.
-    dcmd cp $tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_armhf.changes .
-    cd $tmp/makeforwardport/tempgit
 fi
 
 #we want to make sure that the result at this point gets preserved even dgit push fails for some reason.
+cd $outputdir
+pwd
 dcmd cp $tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_*.changes .
 cd $tmp/makeforwardport/tempgit
 

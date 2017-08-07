@@ -1,0 +1,133 @@
+Git based autoforwardporter.
+
+PURPOSE:
+
+The purpose of this tool is to assist downstreams in maintaining local changes
+to Debian packages. In particular automating the merging of those local changes
+
+"downstream" in this context can be anything from a set of packages you only use
+yourself to a major derivative.
+
+------------The working repo-------------
+
+The working repo is a repository with multiple suites in groups. The "main"
+suite represents what you use/ship. The staging suite represents stuff that 
+you have plan to ship but has not yet been built
+
+Having a seperate staging suite is optional. If you don't have a seperate
+staging suite then you can simply point the "staging suite" at your main suite.
+
+Currently it is up to you to import stuff into your working repo. Options to
+Automatically manage the working repo may be added later.
+
+------------Version markers--------------
+
+Markers in the version number are used to identify versions locally produced by
+your downstream project. These markers will normally take the form of a plus
+sign, followed by the name of your prorject followed by a number. e.g. +rpi1
++ubuntu1 etc. 
+
+Normally the marker will be placed at the end of the version number, but
+sometimes this is not possible. Consider for example Debian releases a package
+with version "1", you make a derived package with version "1+rpi1". Debian then
+releases a new version "1+deb7u1". You cannot use "1+deb7u1+rpi1" for your new
+version because "1+deb7u1+rpi1" << "1+rpi1". In this case the autoforwardporter
+will use a version with the local marker in the middle, e.g. "1+rpi1+deb7u1".
+
+Autoforwardportergit also supports a "revert marker". This is used to mark
+packages where you have reverted your local changes, but still need to raise
+the version number to preserve version ordering.
+
+------------dscdirtogit----------------
+
+The first stage of the process is getting your source packages into git with
+a sensible history. This is the function of dscdirtogit.
+
+Versions of a package are imported in version number order and dgit is used
+to import the packages. If the package has a dgit: line then the package is
+simply imported using that commit.
+
+If the package does not have a dgit tag then the history is built based on the
+changelogs. The exact behaviour depends on whether the version contains a local
+marker.
+
+If there is a local marker in the version number then dscdirtogit strictly
+insists on using the immediate parent. If the immediate parent does not exist
+the import process will abort. Sometimes it will be nessacery to manually
+download a dsc to the pool and re-run dscdirtogit.
+
+If there is not a local version marker then dscdirtogit is more lax, it will
+work backwards through the changelog until it finds a version that it can use
+as the parent. If it doesn't find any then it will import the package with an
+orphan history.
+
+dscdirtogit is not normally invoked directly. Dscdirtogitdriver is used to
+read a whitelist of packages and run dscdirtogit for each package with the
+correct options.
+
+dscdirtogitdriver is invoked as
+
+<path>/dscdirtogitdriver
+
+There are no command line arguments.
+
+-----------the actual autoforwardporter----------
+
+The actual autoforwardporter is conceptually simple. Take the downstream version
+merge it with the new version from the upstream distro and build a source
+package. Since this is dgit based these are patches-applied git trees.
+
+The git merge will not simply succeeed at the very least debian/changelog will
+have conflicts. There are also a number of other debian related files that will
+often have conflicts that can be dealt with mechanically. 
+
+The autoforwardporter will attempt to fix up these conflicts. This process will
+likely be improved and made more customisable in future versions.
+
+There is also the possibility for failures related to the quilt series when
+building a source package even after the git conflicts are closed. Currently the
+autoforwardporter has no support for dealing with this but support is likely to
+be added later.
+
+The results of the process whether successful or not will be pushed to a
+"working" branch in the git repo. If there are still conflicts that could not
+automatically be resolved they will be listed at the top of debian/changelog.
+
+If the conflicts are resolved successfully then an attempt will be made to build
+a source package. Optionally the autoforwardporter can build the resulting
+package using sbuild and use dgit push to create dgit: tags.
+
+The autoforwardporter is invoked as
+
+<path>/forwardportdriver <mainsuite>
+
+--------------whitelists--------------------
+The git import and forward porting processes will only be performed on
+whitelisted files.
+
+There is a tool updateimportwhitelist which can be used to add entries
+from the import
+
+--------------output and log files-----------
+output files and logs are placed in an output directory. Each package/version
+combination will only be tried once, if you want to retry a package/version
+then simply delete the log file and re-run the autoforwardporter.
+
+--------------configuration---------------
+
+The autoforwardporter requires configuration. To do this a configuration
+directory is used. By default this is ~/.autoforwardportergit but this can be
+overridden by the AFPGCONFIG environment variable.
+
+The main configuration file is afpg.ini in the configuration directory.
+
+The file is an "ini style" file read with python 3's config parser. There is
+a main section with global settings and a setting for each suite group . The
+section for each suite group is named after the "main" suite in the group.
+
+Relative paths in the configuration file are interpreted relative to the config
+directory. Absoloute paths and paths under the users homedir (starting with ~/
+can also be specified.
+
+A commented example configuration file with explanations of the settings can 
+be found in the tests subdirectory.

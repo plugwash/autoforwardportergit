@@ -105,13 +105,20 @@ The autoforwardporter is invoked as
 The git import and forward porting processes will only be performed on
 whitelisted files.
 
+The whitelist for the importer is whitelist.import, the whitelists for the
+actualautoforwardporter are whitelist.<mainsuite>
+
+The whiltelists are located in the configuratoin directory (see later).
+
 There is a tool updateimportwhitelist which can be used to add entries
-from the import
+from the autoforwardporter whitelist to the 
 
 --------------output and log files-----------
-output files and logs are placed in an output directory. Each package/version
-combination will only be tried once, if you want to retry a package/version
-then simply delete the log file and re-run the autoforwardporter.
+output files and logs are placed in an output directory. Before trying to
+perform a forward port the autoforwardporter will check for a log file. 
+Therefore each package/version combination will only be tried once, if you want
+to retry a package/version then simply delete the log file and re-run the
+autoforwardporter.
 
 --------------configuration---------------
 

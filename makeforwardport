@@ -8,8 +8,8 @@ DEBVERSION=$3
 NEWVERSION=$4
 TARGETSUITE=$5
 BRANCHNAME=$6
-source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:forwardportname main:forwardportemail main:outputdir)
-$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:forwardportname main:forwardportemail main:outputdir
+source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:forwardportname main:forwardportemail main:outputdir main:dosbuild main:dodgitpush)
+$SCRIPTDIR/afpg_readconfig.py          main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:forwardportname main:forwardportemail main:outputdir main:dosbuild main:dodgitpush
 
 
 NEWVERSIONNOEPOCH=`echo ${NEWVERSION} | sed -e s/^[^:]://`
@@ -117,21 +117,25 @@ git status
 #which is seriously subobtimal.
 dgit -wgf --quilt=auto build-source
 cd $tmp/makeforwardport
-rm *.changes
 
-#disable sbuild for now, this needs to be made a configuration option
-#going forward it would be good to have more inteligent application of --force-orig-source, not a massive priority for now though
-#sbuild -snA --force-orig-source -d ${TARGETSUITE} ${PACKAGE}_${NEWVERSIONNOEPOCH}.dsc
-#cd $OUTPUTDIR
-#we want to make sure that the result of sbuild gets preserved even dgit push fails for some reason.
-#dcmd cp $tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_armhf.changes .
-#cd $tmp/makeforwardport/tempgit
+if [[ $dosbuild == yes ]]; then
+    rm *.changes
+    #going forward it would be good to have more inteligent application of --force-orig-source, not a massive priority for now though
+    sbuild -snA --force-orig-source -d ${TARGETSUITE} ${PACKAGE}_${NEWVERSIONNOEPOCH}.dsc
+    cd $OUTPUTDIR
+    #we want to make sure that the result of sbuild gets preserved even dgit push fails for some reason.
+    dcmd cp $tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_armhf.changes .
+    cd $tmp/makeforwardport/tempgit
+fi
 
-#disable for now, this needs to be made a configuration option
-#$SCRIPTDIR/setup-dgit-for-push
+#we want to make sure that the result at this point gets preserved even dgit push fails for some reason.
+dcmd cp $tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_*.changes .
+cd $tmp/makeforwardport/tempgit
 
-#PATH=$SCRIPTDIR/dummy-dput:$PATH dgit push --deliberately-not-fast-forward 
 
-#cd /build/autoforwardportergit/output/
-#dcmd cp $tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_armhf.changes .
-
+if [[ $dodgitpush == yes ]]; then
+    $AFPGCONFIG/setup-dgit-for-push
+    PATH=$SCRIPTDIR/dummy-dput:$PATH dgit push --deliberately-not-fast-forward 
+    cd $outputdir
+    dcmd cp $tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_armhf.changes .
+fi

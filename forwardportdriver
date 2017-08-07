@@ -76,7 +76,7 @@ for PACKAGE in $(cat $AFPGCONFIG/whitelist.${MAINSUITE}) ; do
 	NEWVERSION=${DEBVERSION}${localmarker}1
 	OLDVERSION=${STAGINGVERSION}
     elif [[ $MAINVERSION == *${localmarker}* ]] ; then
-	NEWVERSION=${DEBVERSION}${localmarker}
+	NEWVERSION=${DEBVERSION}${localmarker}1
 	OLDVERSION=${MAINVERSION}
     elif [[ $STAGINGVERSION == *${revertmarker}* ]] ; then
 	if dpkg --compare-versions $STAGINGVERSION lt $DEBVERSION ; then

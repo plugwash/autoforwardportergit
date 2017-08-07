@@ -138,3 +138,47 @@ can also be specified.
 
 A commented example configuration file with explanations of the settings can 
 be found in the tests subdirectory.
+
+-------------optional feature, sbuild---------------
+Optionally the autoforwardporter can call sbuild to build the resulting packages
+so that you get binaries as well as dscs. You will need to set up sbuild so it
+can be used to build source packages for your staging suite(s).
+
+-------------optional feature, dgit push------------
+Optionally the autoforwardporter can perform a dgit push to push the results
+to a dgit server.
+
+The advantage of using dgit push is that when your dscs are imported either by
+your users or by dscdirtogit you will get real git history.
+
+The downside is that you need to set up a dgit server which should be accessible
+to everyone who may receive your dscs. 
+
+Currently dgit push is "nerfed" so it uploads to the dgit repos but doesn't
+actually upload to the archive. This may be made configurarable later.
+
+------------optional tool, branch pointer------------
+Branchpointer creates branches in the git repo pointing at the version that is
+in each suite.
+
+It is invoked as 
+
+<path>/branchpointer <mainsuite>
+
+It uses the same whitelist as the importer.
+
+------------optional tool, pushtogithub-------------
+Pushtogithub pushes the tags produced by dscdirtogit and the branches produced
+by branchpointer to github.
+
+This tool requires some setup. 
+
+Secondly git-credential-netrc must be copied from 
+/usr/share/doc/git/contrib/credential/netrc/git-credential-netrc to /usr/bin
+
+It uses it's own whitelist "whitelist.pushtogithub" in the configuration
+directory.
+
+It requires a netrc file with the github login settings, the location of this
+file is configured in the ini file by the "netrcfile" setting. You must also
+specify your github project in the "githubproject" setting.

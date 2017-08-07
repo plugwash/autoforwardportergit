@@ -43,9 +43,10 @@ for PACKAGE in $(cat $AFPGCONFIG/whitelist.pushtogithub ) ; do
     fi
 
     for MAINSUITE in "$@"; do
-        if [[ $PACKAGE == libreoffice ]] && ([[ $MAINSUITE == stretch ]] || $MAINSUITE == buster ); then
+        if [[ $PACKAGE == libreoffice ]] && ([[ $MAINSUITE == stretch ]] || [[ $MAINSUITE == buster ]] ); then
             #unfortunately stretch's libreoffice can't be pushed to github due to
             #large files.
+            true
         else
             source <($SCRIPTDIR/afpg_readconfig.py $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE)
             pushifexists $MAINSUITE

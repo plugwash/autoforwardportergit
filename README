@@ -120,6 +120,20 @@ Therefore each package/version combination will only be tried once, if you want
 to retry a package/version then simply delete the log file and re-run the
 autoforwardporter.
 
+--------------dependencies---------------
+dscdirtogit and autoforwardportergit require the following packages
+
+git
+dgit 
+python3
+python3-debian
+python3-git
+moreutils (for the "sponge" untility)
+rcs (for the "merge" utility)
+
+Additionally you will also want a tool to manage your working repo, reprepro is
+suggested for this.
+
 --------------configuration---------------
 
 The autoforwardporter requires configuration. To do this a configuration

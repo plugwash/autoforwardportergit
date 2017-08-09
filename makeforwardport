@@ -33,7 +33,7 @@ mkdir makeforwardport
 cd makeforwardport
 git clone $gitdir/${PACKAGEDIR} tempgit
 cd tempgit
-dgit setup-new-tree
+dgit setup-gitattributes
 git config --local user.name "Raspbian forward pporter"
 git config --local user.email root@raspbian.org
 #make sure there is no current branch

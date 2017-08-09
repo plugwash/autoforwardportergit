@@ -11,14 +11,22 @@ yourself to a major derivative.
 ------------The working repo-------------
 
 The working repo is a repository with multiple suites in groups. The "main"
-suite represents what you use/ship. The staging suite represents stuff that 
-you have plan to ship but has not yet been built
+suite of each group represents what you use/ship. The "staging" suite represents
+stuff that you have plan to ship but has not yet been built, passed automated
+checks or whatever. The "upstream" suite represents what your upstream distro
+(e.g. debian) ships.
 
 Having a seperate staging suite is optional. If you don't have a seperate
 staging suite then you can simply point the "staging suite" at your main suite.
 
+The working repo must have uncompressed packages and sources files. It must also
+use a standard pool layout.
+
+An example reprepro config that is suitable for use with the autoforwardporter
+can be found in the tests/workingrepo/conf directory.
+
 Currently it is up to you to import stuff into your working repo. Options to
-Automatically manage the working repo may be added later.
+Automatically manage the working repo may be added later. 
 
 ------------Version markers--------------
 
@@ -132,7 +140,7 @@ moreutils (for the "sponge" untility)
 rcs (for the "merge" utility)
 
 Additionally you will also want a tool to manage your working repo, reprepro is
-suggested for this.
+recommended for this.
 
 --------------configuration---------------
 

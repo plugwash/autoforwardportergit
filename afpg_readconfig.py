@@ -25,15 +25,49 @@ config.read(configfile)
 
 pathconfigsettings = set(["workingrepo","gitdir","tmp","outputdir","netrcfile"])
 
+def getsuitegroups():
+	result = []
+	for section in config:
+		#print(repr(section))
+		if 'upstreamsuite' in config[section]:
+			result.append(section)
+	return result
+
+def getsuites():
+	result = set()
+	for section in config:
+		#print(repr(section))
+		if 'upstreamsuite' in config[section]:
+			result.add(section)
+			result.add(config[section]['upstreamsuite'])
+			if 'stagingsuite' in config[section]:
+				result.add(config[section]['stagingsuite'])
+	return result
+
+
 def readconfigentry(section,item):
-	#sys.stderr.write('reading config entry '+item+' from section '+section+"\n")
-	value = config[section][item];
-	if item.lower() in pathconfigsettings:
-		if value[0:2] == '~/':
-			value = os.path.join(os.getenv('HOME'),value[2:])
+	item = item.lower()
+	if section == '_special_':
+		if item == 'suitegroups':
+			return ' '.join(getsuitegroups())
+		elif item == 'suites':
+			return ' '.join(getsuites())
+	else:
+		#sys.stderr.write('reading config entry '+item+' from section '+section+"\n")
+		if item in config[section]:
+			value = config[section][item];
+			if item in pathconfigsettings:
+				if value[0:2] == '~/':
+					value = os.path.join(os.getenv('HOME'),value[2:])
+				else:
+					value = os.path.join(configdir,value)
 		else:
-			value = os.path.join(configdir,value)
-	return value
+			if item == 'stagingsuite':
+				value = section
+			else:
+				sys.stderr.write('config entry '+item+' not found in section '+section+"\n")
+				sys.exit(2)
+		return value
 
 if __name__ == '__main__': #if we are being run directly rather than imported
 	#print(repr(config['main']))

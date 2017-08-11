@@ -1,0 +1,18 @@
+#!/bin/bash -ev
+SCRIPTDIR=`dirname $(readlink -f $0)`
+$SCRIPTDIR/afpg_readconfig.py _special_:suites _special_:suitegroups
+source <($SCRIPTDIR/afpg_readconfig.py _special_:suites _special_:suitegroups)
+cd /build/workingrepo
+reprepro -V update $suites
+for suite in $suitegroups; do
+	$SCRIPTDIR/updateimportwhitelist ~/.autoforwardportergit/whitelist.import ~/.autoforwardportergit/whitelist.$suite
+done
+$SCRIPTDIR/dscdirtogitdriver
+for suite in $suitegroups; do
+	$SCRIPTDIR/branchpointer $suite
+done
+cp ~/.autoforwardportergit/whitelist.import ~/.autoforwardportergit/whitelist.pushtogithub
+$scriptdir/pushtogithub $suitegroups
+for suite in $suitegroups; do
+	$scriptdir/forwardportdriver $suite
+done

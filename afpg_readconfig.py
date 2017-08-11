@@ -21,6 +21,12 @@ config['main'] = {}
 config['main']['dosbuild'] = 'no';
 config['main']['dodgitpush'] = 'no';
 config['main']['AFPGCONFIG'] = configdir;
+config['main']['generatefilter'] = 'yes'
+config['main']['updaterepo'] = 'yes'
+config['main']['dobranchpointer'] = 'yes'
+config['main']['dogithubpush'] = 'no'
+config['main']['useimportwhitelistforgithub'] = 'no'
+
 config.read(configfile)
 
 pathconfigsettings = set(["workingrepo","gitdir","tmp","outputdir","netrcfile"])

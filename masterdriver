@@ -1,18 +1,29 @@
 #!/bin/bash -ev
 SCRIPTDIR=`dirname $(readlink -f $0)`
-$SCRIPTDIR/afpg_readconfig.py _special_:suites _special_:suitegroups
-source <($SCRIPTDIR/afpg_readconfig.py _special_:suites _special_:suitegroups)
-cd /build/workingrepo
-reprepro -V update $suites
+$SCRIPTDIR/afpg_readconfig.py          _special_:suites _special_:suitegroups main:workingrepo main:generatefilter main:AFPGCONFIG main:updaterepo main:dobranchpointer main:dogithubpush main:useimportwhitelistforgithub
+source <($SCRIPTDIR/afpg_readconfig.py _special_:suites _special_:suitegroups main:workingrepo main:generatefilter main:AFPGCONFIG main:updaterepo main:dobranchpointer main:dogithubpush main:useimportwhitelistforgithub)
+cd $workingrepo
 for suite in $suitegroups; do
 	$SCRIPTDIR/updateimportwhitelist ~/.autoforwardportergit/whitelist.import ~/.autoforwardportergit/whitelist.$suite
 done
+if [[ $generatefilter == yes ]] ; then
+	sed '/^$/d' $AFPGCONFIG/whitelist.import |sed 's/$/ install/' > $workingrepo/conf/filter.afpg
+fi
+if [[ $updaterepo == yes ]] ; then
+    reprepro -V update $suites
+fi
 $SCRIPTDIR/dscdirtogitdriver
+if [[ $dobranchpointer == yes ]] ; then
+	for suite in $suitegroups; do
+		$SCRIPTDIR/branchpointer $suite
+	done
+fi
+if [[ $dogithubpush == yes ]] ; then
+	if [[ $useimportwhitelistforgithub == yes ]] ; then
+		cp ~/.autoforwardportergit/whitelist.import ~/.autoforwardportergit/whitelist.pushtogithub
+	fi
+	$SCRIPTDIR/pushtogithub $suitegroups
+fi
 for suite in $suitegroups; do
-	$SCRIPTDIR/branchpointer $suite
-done
-cp ~/.autoforwardportergit/whitelist.import ~/.autoforwardportergit/whitelist.pushtogithub
-$scriptdir/pushtogithub $suitegroups
-for suite in $suitegroups; do
-	$scriptdir/forwardportdriver $suite
+	$SCRIPTDIR/forwardportdriver $suite
 done

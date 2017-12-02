@@ -56,8 +56,16 @@ git diff --name-only --diff-filter=U > ../conflicts
 $SCRIPTDIR/fixupchangelog debian/changelog $NEWVERSION $TARGETSUITE "`date -uR`" $PACKAGE
 git add debian/changelog
 if grep ^debian/patches/series$ ../conflicts ; then
-	$SCRIPTDIR/fixupseries debian/patches/series
-	git add debian/patches/series
+	if grep '^<<<<<<< ' debian/patches/series ; then
+		$SCRIPTDIR/fixupseries debian/patches/series
+		git add debian/patches/series
+	else
+		#debian/patches/series is marked as conflicting but no conflict markers
+		#assume this means that upstream distribution no longer ships a
+		#debian/patches/series file.
+		git diff $BASETAG $OLDTAG | filterdiff -p1 -i debian/patches/series | egrep '^\+[^+]' | cut -c 2- > debian/patches/series
+		git add debian/patches/series
+	fi
 fi
 (if grep ^debian/control.md5sum$ ../conflicts ; then
 	#"kernel style" package,

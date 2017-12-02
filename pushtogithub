@@ -1,7 +1,7 @@
 #!/bin/bash -e
 SCRIPTDIR=`dirname $(readlink -f $0)`
 source <($SCRIPTDIR/afpg_readconfig.py main:gitdir main:tmp main:AFPGCONFIG main:netrcfile main:githubproject)
-$SCRIPTDIR/afpg_readconfig.py          main:gitdir main:tmp main:AFPGCONFIG main:netrcfile main:githubproject)
+$SCRIPTDIR/afpg_readconfig.py          main:gitdir main:tmp main:AFPGCONFIG main:netrcfile main:githubproject
 
 function pushifexists {
     exists=`git show-ref $1` || true

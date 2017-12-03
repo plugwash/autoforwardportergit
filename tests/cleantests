@@ -13,3 +13,4 @@ rm -rf workingrepo/db
 rm -rf git
 rm -rf tmp
 rm -rf output
+rm -f whitelist.*

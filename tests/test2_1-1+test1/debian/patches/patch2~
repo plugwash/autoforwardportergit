@@ -1,0 +1,10 @@
+Index: test2_1-1+test1/file1
+===================================================================
+--- test2_1-1+test1.orig/file1
++++ test2_1-1+test1/file1
+@@ -5,4 +5,5 @@ o
+ foo
+ baa
+ bar
++oink
+ baz

@@ -1,0 +1,14 @@
+test2 (2-1) UNRELEASED; urgency=medium
+
+  * Make some "upstream" changes.
+  * When we apply the autoforwardporter this should result in patch1
+    Failing to apply and patch2 having fuzz.
+
+ -- plugwash <plugwash@afpgtest>  Sat, 02 Dec 2017 15:38:29 +0000
+
+test2 (1-1) unstable; urgency=medium
+
+  * Dummy package for autoforwardportergit testing.
+  * This package will test out quilt fixing code.
+
+ -- plugwash <plugwash@afpgtest>  Sat, 05 Aug 2017 10:48:49 +0100

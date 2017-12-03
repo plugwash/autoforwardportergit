@@ -1,0 +1,31 @@
+Format: 1.8
+Date: Sat, 05 Aug 2017 10:48:49 +0100
+Source: test2
+Binary: test2
+Architecture: source
+Version: 1-1
+Distribution: unstable
+Urgency: medium
+Maintainer: plugwash <plugwash@afpgtest>
+Changed-By: plugwash <plugwash@afpgtest>
+Description:
+ test2      - dummy package for autoforwardportergit testing.
+Changes:
+ test2 (1-1) unstable; urgency=medium
+ .
+   * Dummy package for autoforwardportergit testing.
+Checksums-Sha1:
+ 0075ca86a24964bd579c7257b05bca9c24e20908 709 test2_1-1.dsc
+ 84dad8c05ee781139fcc93c7cb4e3a7ca070b84d 187 test2_1.orig.tar.gz
+ 0ba19ee737e5421e47676bb4f6f3d66d2348554b 592 test2_1-1.debian.tar.xz
+ da8649a11cb8068de294f7eac7c091c93562d0b0 4236 test2_1-1_source.buildinfo
+Checksums-Sha256:
+ c41a796f380f6a0046228a9d2640fd2de41c481e1c805714f63d22c7ef414d66 709 test2_1-1.dsc
+ d658785ed03fff648c7111b2df6f386796bcc862defe6ac56e79d23e58fce921 187 test2_1.orig.tar.gz
+ 5a1f6052b4b9342a63fbbdd9016d3c5a85506233f1697c58e3c5722e15e3569f 592 test2_1-1.debian.tar.xz
+ 5c721715aa19b02fe2593039ea35286bd0595523e18d3f4c45ff23894b8d9df8 4236 test2_1-1_source.buildinfo
+Files:
+ ef68f51f4657f021d2b21403901692d5 709 unknown optional test2_1-1.dsc
+ 60920c618a086c17b37c8e3c7f713b2d 187 unknown optional test2_1.orig.tar.gz
+ 5b87ec6e35c1eb70b1e417a640d39c52 592 unknown optional test2_1-1.debian.tar.xz
+ 2a2ba230c50d7b44fa7999d07a0d6963 4236 unknown optional test2_1-1_source.buildinfo

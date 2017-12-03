@@ -121,15 +121,52 @@ fi
 git push -f origin $BRANCHNAME
 dcmd --orig cp $workingrepo/pool/*/$PACKAGEDIR/${PACKAGE}_${DEBVERSIONNOEPOCH}.dsc ..
 git status
+
+#quilt fixup code, try dgit first if that fails it's time to be more
+#aggressive.
+if ! dgit -wgf --quilt=auto quilt-fixup; then
+    cd ..
+    dpkg-source --skip-patches -x $workingrepo/pool/*/$PACKAGEDIR/${PACKAGE}_${DEBVERSIONNOEPOCH}.dsc tempdefuzz
+    rm -rf tempdefuzz/debian/patches
+    cp -a tempgit/debian/patches tempdefuzz/debian/patches
+    rm -f tempdefuzz/debian/patches/series
+    cd tempdefuzz
+    touch debian/patches/series
+    while read patch; do
+        export QUILT_PATCHES=debian/patches
+        echo $patch >> debian/patches/series
+        if ! quilt push -a --fuzz 0; then
+            #this patch needs to be dealt with, try and fix it and if that
+            #is not possible remove it
+            if quilt push -a ; then
+                quilt refresh
+            else
+                head -n -1 debian/patches/series | sponge debian/patches/series
+            fi
+        fi
+    done < ../tempgit/debian/patches/series
+    cd ..
+    rm -rf tempgit/debian/patches
+    mv tempdefuzz/debian/patches tempgit/debian/patches
+    cd tempgit
+    git add debian/patches
+    git commit -m "Defuzz fuzzy quilt patches and/or disable broken quilt patches"
+fi
+
 #FIXME: the command below tries to access the internet and fails if it can't
 #which is seriously subobtimal.
 dgit -wgf --quilt=auto build-source
+
 cd $tmp/makeforwardport
 
 if [[ $dosbuild == yes ]]; then
     rm *.changes
     #going forward it would be good to have more inteligent application of --force-orig-source, not a massive priority for now though
     sbuild -snA --force-orig-source -d ${TARGETSUITE} ${PACKAGE}_${NEWVERSIONNOEPOCH}.dsc
+else
+    #dgit build-source doens't seem to allow forced inclusion of the orig
+    #tarball, so use changestool to add it.
+    changestool ${PACKAGE}_${NEWVERSIONNOEPOCH}_*.changes includeallsources
 fi
 
 #we want to make sure that the result at this point gets preserved even dgit push fails for some reason.

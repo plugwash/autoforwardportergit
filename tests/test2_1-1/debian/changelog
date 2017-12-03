@@ -1,6 +1,6 @@
-test1 (1-1) unstable; urgency=medium
+test2 (1-1) unstable; urgency=medium
 
   * Dummy package for autoforwardportergit testing.
-  * This package set will test out quilt fixing code.
+  * This package will test out quilt fixing code.
 
  -- plugwash <plugwash@afpgtest>  Sat, 05 Aug 2017 10:48:49 +0100

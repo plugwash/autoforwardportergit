@@ -1,0 +1,10 @@
+Index: test2_1-1+test1/file1
+===================================================================
+--- test2_1-1+test1.orig/file1
++++ test2_1-1+test1/file1
+@@ -9,4 +9,5 @@ apple
+ banana
+ carrot
+ bar
++oink
+ baz

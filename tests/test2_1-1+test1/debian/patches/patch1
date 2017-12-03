@@ -1,0 +1,14 @@
+Index: test2_1-1+test1/file1
+===================================================================
+--- test2_1-1+test1.orig/file1
++++ test2_1-1+test1/file1
+@@ -1,5 +1,9 @@
+ this is a test
++m
++o
++o
+ foo
++baa
+ bar
+ apple
+ banana

@@ -92,10 +92,11 @@ often have conflicts that can be dealt with mechanically.
 The autoforwardporter will attempt to fix up these conflicts. This process will
 likely be improved and made more customisable in future versions.
 
-There is also the possibility for failures related to the quilt series when
-building a source package even after the git conflicts are closed. Currently the
-autoforwardporter has no support for dealing with this but support is likely to
-be added later.
+Assuming the git conflicts are succesfully dealt with the focus then moves
+on to the quilt series. Any fuzzy patches will be defuzzed and any packages that
+cannot be applied to the upstream source will be removed from the quilt series.
+dgit will then add a patch to the quilt series to make the results of applying
+the quilt series the same as the files in the actual tree.
 
 The results of the process whether successful or not will be pushed to a
 "working" branch in the git repo. If there are still conflicts that could not
@@ -138,9 +139,8 @@ python3-debian
 python3-git
 moreutils (for the "sponge" untility)
 rcs (for the "merge" utility)
-
-Additionally you will also want a tool to manage your working repo, reprepro is
-recommended for this.
+quilt (for fixing up quilt series)
+reprepro (for changestool and also reccomended for managing your working repo).
 
 --------------configuration---------------
 

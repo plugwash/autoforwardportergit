@@ -18,6 +18,10 @@ reprepro includedsc test-staging ../test1_1-1+test1.dsc
 reprepro includedsc test ../test1_1-1+test1.dsc
 reprepro includedsc test-deb ../test1_2-1.dsc
 cd ..
+
+echo test1 > whitelist.import
+echo test1 > whitelist.test
+
 #this first invocation should fail because base version is not found.
 ! ../dscdirtogitdriver test
 
@@ -38,6 +42,7 @@ dcmd cp -a test1_1-1.dsc workingrepo/pool/main/t/test1
 
 #now for a different case, test the case where we need to generate a version
 #with the marker in the middle
+
 dpkg-source -b test1_1-1+debu1
 cd workingrepo
 reprepro removesrc test-deb test1
@@ -47,5 +52,38 @@ cd ..
 ../dscdirtogitdriver test
 
 ../forwardportdriver test
+
+#check we actually produced a result
+[ -f output/test1_1-1+test1+debu1.dsc ]
+
+#now to test some quilt fixup stuff
+echo test2 >> whitelist.import
+echo test2 >> whitelist.test
+
+tar -zcf test2_1.orig.tar.gz test2_1.orig
+tar -zcf test2_2.orig.tar.gz test2_2.orig
+dpkg-source -b test2_1-1
+dpkg-source -b test2_1-1+test1
+dpkg-source -b test2_2-1
+
+cd workingrepo
+reprepro includedsc test-staging ../test2_1-1+test1.dsc
+reprepro includedsc test ../test2_1-1+test1.dsc
+reprepro includedsc test-deb ../test2_2-1.dsc
+cd ..
+#give it the needed base version
+dcmd cp -a test2_1-1.dsc workingrepo/pool/main/t/test2
+../dscdirtogitdriver test
+
+#test branchpointer
+../branchpointer test
+
+#now lets try some actual forward porting
+../forwardportdriver test
+
+#check we actually produced a result
+[ -f output/test2_2-1+test1.dsc ]
+
+
 
 echo tests finished succesfully

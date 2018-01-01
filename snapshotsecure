@@ -214,8 +214,12 @@ for instance in instances:
 				sourcesurl = url+pn
 				#print(sourcesurl)
 				sourcescompressed = io.BytesIO()
-				with urllib.request.urlopen(sourcesurl) as response:
-					sourcescompressed.write(response.read())
+				try:
+					with urllib.request.urlopen(sourcesurl) as response:
+						sourcescompressed.write(response.read())
+				except urllib.error.URLError as e:
+					print('WARNING: failed to fetch '+sourcesurl+' continueing search')
+					continue
 				sourcescompressed.seek(0)
 				sourcesf = sourcescompressed
 				if cl == 1: sourcesf = gzip.open(sourcescompressed)

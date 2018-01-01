@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-#Copyright (c) 2016-2017 Peter Michael Green
+#Copyright (c) 2016-2018 Peter Michael Green
 #
 #Permission is hereby granted, free of charge, to any person obtaining a copy of
 #this software and associated documentation files (the "Software"), to deal in
@@ -19,8 +19,6 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
-
-
 from debian.debian_support import Version
 from debian.deb822 import Dsc
 from debian.changelog import Changelog
@@ -30,7 +28,9 @@ import sys
 import re
 from os.path import basename
 import subprocess
-
+import argparse
+import collections
+import os
 
 def versiontotag(version):
 	tag = str(version)
@@ -39,15 +39,25 @@ def versiontotag(version):
 	tag = re.sub('\.(?=\.|$|lock$)','.#',tag)
 	return tag
 
-foo = Version('2.0.0')
-bar = Version('1:2.2')
+parser = argparse.ArgumentParser(description="imports a directory full of dscs into git")
+parser.add_argument("--snapshot", help="automatically retrive base versions from snapshot.debian.org, retrieved packages will be stored in the first dsc dir, retrivial will only be attempted if the source package names match", action="store_true")
+parser.add_argument("dscdir", nargs='+',help="dsc directories to process")
+parser.add_argument("localversionmarkers",help="markers used to identify local versions, seperated by dollar signs")
+args = parser.parse_args()
 
-localversionmarkers = sys.argv[-1].split('$')
+#print(repr(args))
+
+scriptdir=os.path.dirname(os.path.realpath(__file__))
+
+#foo = Version('2.0.0')
+#bar = Version('1:2.2')
+
+localversionmarkers = args.localversionmarkers.split('$')
 
 versions = []
 
-for dscdir in sys.argv[1:-1]:
-	for filename in glob.glob(sys.argv[1]+'/*.dsc'):
+for dscdir in args.dscdir:
+	for filename in glob.glob(dscdir+'/*.dsc'):
 		#print(filename)
 		f = open(filename,'rb')
 		dsc = Dsc(f)
@@ -56,6 +66,8 @@ for dscdir in sys.argv[1:-1]:
 		versions.append((version,filename))
 
 versions.sort()
+
+print(repr(versions))
 
 repo = Repo('.');
 
@@ -73,12 +85,13 @@ def tryfindcommit(githash):
 	except:
 		return None
 
-for (version,filename) in versions:
-	print(filename, flush = True)
-	print(version, flush = True)
-	tagname = versiontotag(version)
-	if tryfindtag(repo,tagname) == None:
-		#tag not found, that means we have to import it
+#perform the actual dsc import
+#this may return
+#0 for success
+#a nonzero integer for failure that should terminate the program
+#if the base version is not found a tuple indicating the base version needed and the package names of the current
+#dsc and the base version 
+def importdsc(version,tagname,repo):
 		print('starting import process for '+str(version)+' tag name '+tagname, flush = True)
 		
 		#make sure no branch is checked out
@@ -113,13 +126,18 @@ for (version,filename) in versions:
 				subprocess.call(['git','fetch',fetchsourceurl,fetchsourcepath+tagname])
 				commit = tryfindcommit(dscgitref);
 		else:
-			if (subprocess.call(['rm','-rf','extract']) != 0): exit(1)
-			if (subprocess.call(['dpkg-source','-x',filename,'extract']) != 0): exit(1)
+			if (subprocess.call(['rm','-rf','extract']) != 0): return 1
+			if (subprocess.call(['dpkg-source','-x',filename,'extract']) != 0): return 1
 			f = open('extract/debian/changelog','rb');
 			changelog = Changelog(f)
 			f.close()
 			local = any(x in str(version) for x in localversionmarkers)
-			for cversion in changelog.versions:
+			currentpackage = None
+			for change in changelog:
+				#print(change.package+' '+str(change.version))
+				cversion = change.version
+				if (cversion == version):
+					currentpackage = change.package
 				if (cversion != version):
 					ctagname = versiontotag(cversion)
 					ctag = tryfindtag(repo,ctagname)
@@ -129,7 +147,7 @@ for (version,filename) in versions:
 						break
 					if local:
 						print('immediate parent '+str(cversion)+' for local version '+str(version)+' not found')
-						exit(1)
+						return (cversion,currentpackage,change.package)
 		print(parenttagname)
 		if parenttag == None:
 			branchprefix = '+'
@@ -137,7 +155,7 @@ for (version,filename) in versions:
 			branchprefix = '..'
 			command = ['git','branch','-f','workingbranch',parenttagname]
 			print(command, flush=True)
-			if (subprocess.call(command) != 0): exit(1)
+			if (subprocess.call(command) != 0): return 1
 		
 		
 		if (dscusesdgit and (commit == None)):
@@ -148,7 +166,7 @@ for (version,filename) in versions:
 		#filename = '../'+basename(filename)
 		command = ['dgit','import-dsc',filename,branchprefix+'workingbranch']
 		print(command, flush=True)
-		if (subprocess.call(command) != 0): exit(1)
+		if (subprocess.call(command) != 0): return 1
 		
 		branch = repo.heads.workingbranch
 		authorname = branch.commit.author.name.strip()
@@ -157,10 +175,49 @@ for (version,filename) in versions:
 			print('commit has no author, resetting author')
 			command = ['git','checkout','-q','workingbranch']
 			print(command, flush=True)
-			if (subprocess.call(command) != 0): exit(1)
+			if (subprocess.call(command) != 0): return 1
 			command = ['git','commit','--amend','--reset-author','--no-edit']
 			print(command, flush=True)
-			if (subprocess.call(command) != 0): exit(1)
+			if (subprocess.call(command) != 0): return 1
 		branch = repo.heads.workingbranch
 		repo.create_tag(tagname,branch)
+		return 0
+
+versionqueue = collections.deque(versions)
+while versionqueue: #while the queue of versions is not empty
+	(version,filename) = versionqueue.popleft()
+	print(filename, flush = True)
+	print(version, flush = True)
+	tagname = versiontotag(version)
+	if tryfindtag(repo,tagname) == None:
+		#tag not found, that means we have to import it
+		result = importdsc(version,tagname,repo)
+		if (result == 0):
+			pass #success
+		elif isinstance(result,tuple):
+			if args.snapshot:
+				versionqueue.appendleft((version,filename))
+				(baseversion,currentpackage,basepackage) = result
+				baseversionstr = str(baseversion)
+				if (currentpackage != basepackage):
+					print('not auto-fetching dsc due to package name mismatch')
+					exit(1)
+				dscdir = args.dscdir[0]
+				curdir = os.getcwd() # save current directory
+				os.chdir(dscdir)
+				command = [scriptdir+'/snapshotsecure',basepackage,baseversionstr]
+				print(command, flush=True)
+				if (subprocess.call(command) != 0): exit(1)
+				os.chdir(curdir) #restore saved current directory
+				colonpos = baseversionstr.find(':')
+				if colonpos >= 0:
+					baseversionnoepoch=baseversionstr[colonpos+1:]
+				else:
+					baseversionnoepoch=baseversionstr
+				basefilename = dscdir+'/'+basepackage+'_'+baseversionnoepoch+'.dsc'
+				versionqueue.appendleft((baseversion,basefilename))
+			else:
+				exit(1)
+		else:
+			exit(result)
 

@@ -26,6 +26,7 @@ config['main']['updaterepo'] = 'yes'
 config['main']['dobranchpointer'] = 'yes'
 config['main']['dogithubpush'] = 'no'
 config['main']['useimportwhitelistforgithub'] = 'no'
+config['main']['dscdirtogitargs'] = ''
 
 config.read(configfile)
 

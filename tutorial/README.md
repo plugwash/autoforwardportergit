@@ -10,22 +10,23 @@ We use the "hello" package from Debian as the subject of our demonstration.
 
 ## installing dependencies
 
-This is the only step that requires root privilages. All remaining steps
+This is the only step that requires root privilages. All remaining steps can
+be performed by a normal user.
 
-apt-get install build-essential git dgit python3 python3-debian python3-git moreutils rcs quilt reprepro python3-bs4
+    apt-get install build-essential git dgit python3 python3-debian python3-git moreutils rcs quilt reprepro python3-bs4
 
 ## Preparing the "old downstream version" of the demonstration package
 
 The old downstream version of the demonstration package is shipped in the form
 of a debdiff. We need to convert this to an actual package.
 
-cd ~/autoforwardportergit/tutorial
-../snapshotsecure hello 2.9-2
-dpkg-source -x hello_2.9-2.dsc
-cd hello-2.9
-patch -p1 < ../hello_2.9-2+test1.debdiff
-dpkg-buildpackage -S
-cd ..
+    cd ~/autoforwardportergit/tutorial
+    ../snapshotsecure hello 2.9-2
+    dpkg-source -x hello_2.9-2.dsc
+    cd hello-2.9
+    patch -p1 < ../hello_2.9-2+test1.debdiff
+    dpkg-buildpackage -S
+    cd ..
 
 ## Setting up the working repo
 

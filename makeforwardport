@@ -153,9 +153,7 @@ if ! dgit -wgf --quilt=auto quilt-fixup; then
     git commit -m "Defuzz fuzzy quilt patches and/or disable broken quilt patches"
 fi
 
-#FIXME: the command below tries to access the internet and fails if it can't
-#which is seriously subobtimal.
-dgit -wgf --quilt=auto build-source
+dgit -wgf --quilt=auto -v_ build-source
 
 cd $tmp/makeforwardport
 

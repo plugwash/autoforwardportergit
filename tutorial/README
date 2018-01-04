@@ -1,0 +1,17 @@
+autoforwardportergit tutorial.
+
+This tutorial will demonstrate the use of the autoforwardporter. 
+For demonstration purposes we will use a demonstration repository as our 
+downstream distribution and Debian as our upstream distribution. We will
+assume that you have cloned the autoforwardportergit repository into 
+~/autoforwardportergit
+
+---installing dependencies---
+
+This is the only step that requires root privilages. All remaining steps
+
+apt-get install git dgit python3 python3-debian python3-git moreutils rcs quilt reprepro python3-bs4
+
+---Preparing the "old version" of the demonstration package---
+
+cd ~/autoforwardportergit/tutorial

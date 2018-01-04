@@ -8,6 +8,9 @@ to Debian packages. In particular automating the merging of those local changes
 "downstream" in this context can be anything from a set of packages you only use
 yourself to a major derivative.
 
+this document describes the theory of operation and the available settings. See
+the file tutorial/README for a quick start guide.
+
 ------------The working repo-------------
 
 The working repo is a repository with multiple suites in groups. The "main"
@@ -22,11 +25,12 @@ staging suite then you can simply point the "staging suite" at your main suite.
 The working repo must have uncompressed packages and sources files. It must also
 use a standard pool layout.
 
-An example reprepro config that is suitable for use with the autoforwardporter
-can be found in the tests/workingrepo/conf directory.
+Example reprepro configs that are suitable for use with the autoforwardporter
+can be found in the tests/workingrepo/conf directory or the 
+demo/workingrepo/conf directory.
 
-Currently it is up to you to import stuff into your working repo. Options to
-Automatically manage the working repo may be added later. 
+If desired the autoforwardporter can generate a filter list for reprepro to
+control what packages are imported into the working repo. 
 
 ------------Version markers--------------
 
@@ -60,9 +64,12 @@ changelogs. The exact behaviour depends on whether the version contains a local
 marker.
 
 If there is a local marker in the version number then dscdirtogit strictly
-insists on using the immediate parent. If the immediate parent does not exist
-the import process will abort. Sometimes it will be nessacery to manually
-download a dsc to the pool and re-run dscdirtogit.
+insists on using the immediate parent. If the --snapshot option is specified
+to dscdirtogit then dscdirtogit will attempt to use snapshotsecure to retrive
+the package from snapshot.debian.org. If the immediate parent does not exist
+and the user has not specified the --snapshot option or the retrieval from
+snapshot.debian.org fails the import process will abort. Sometimes it will be
+nessacery to manually download a dsc to the pool and re-run dscdirtogit.
 
 If there is not a local version marker then dscdirtogit is more lax, it will
 work backwards through the changelog until it finds a version that it can use
@@ -77,7 +84,7 @@ dscdirtogitdriver is invoked as
 
 <path>/dscdirtogitdriver
 
-There are no command line arguments.
+Any command line arguments will be passed through to dscdirtogit.
 
 -----------the actual autoforwardporter----------
 
@@ -85,7 +92,7 @@ The actual autoforwardporter is conceptually simple. Take the downstream version
 merge it with the new version from the upstream distro and build a source
 package. Since this is dgit based these are patches-applied git trees.
 
-The git merge will not simply succeeed at the very least debian/changelog will
+The git merge will not simply succeeed. At the very least debian/changelog will
 have conflicts. There are also a number of other debian related files that will
 often have conflicts that can be dealt with mechanically. 
 
@@ -141,6 +148,7 @@ moreutils (for the "sponge" untility)
 rcs (for the "merge" utility)
 quilt (for fixing up quilt series)
 reprepro (for changestool and also reccomended for managing your working repo).
+python3-bs4 (only if you intend to use snapshotsecure)
 
 --------------configuration---------------
 
@@ -204,3 +212,20 @@ directory.
 It requires a netrc file with the github login settings, the location of this
 file is configured in the ini file by the "netrcfile" setting. You must also
 specify your github project in the "githubproject" setting.
+
+-----------optional tool, snapshotsecure-------------
+
+snapshotsecure is a tool for retrieving source packages from snapshot.debian.org
+in a reasonablly secure manner. It can optionally be called by dscdirtogit to
+retrieve the source packages for the immediate parents of locally modified
+versions.
+
+Given a source package and version number, it will find out what snapshot and
+suite it was in, then verify the gpg signature of the Release file in that suite
+and securely validate the Source package. The source package will only be saved
+to disk if it validates successfully.
+
+By default snapshotsecure will use a list of all keys (past and present) that
+are 2048 bits or stronger and have been used to sign the Debian archive.
+Optionally the parameter --1024 can be passed to permit 1024 bit keys to be
+used.

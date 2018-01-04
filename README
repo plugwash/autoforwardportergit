@@ -84,7 +84,8 @@ dscdirtogitdriver is invoked as
 
 <path>/dscdirtogitdriver
 
-Any command line arguments will be passed through to dscdirtogit.
+Options for dscdirtogit can be specified by the dscdirtogitargs option in the
+main section of the autoforwardportergit configuration file.
 
 -----------the actual autoforwardporter----------
 

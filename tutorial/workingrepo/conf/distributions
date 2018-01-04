@@ -1,0 +1,16 @@
+Origin: Test
+Label: Test
+Codename: sid
+Components: main
+Architectures: source
+Description: autoforwardportergit tutorial repo
+DscIndices: Sources Release . .gz
+
+Origin: Test
+Label: Test
+Codename: sid-deb
+Components: main
+Architectures: source
+Description: autoforwardportergit test repo
+DscIndices: Sources Release . .gz
+Update: debian-sid-source

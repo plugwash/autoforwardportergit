@@ -1,1 +1,4 @@
 #!/bin/bash
+rm -rf hello-2.9 output tmp
+rm -f *.dsc *.changes *.buildinfo *.?z
+rm -rf workingrepo/db  workingrepo/dists workingrepo/h  workingrepo/lists workingrepo/pool

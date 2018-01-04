@@ -1,6 +1,4 @@
-Git based autoforwardporter.
-
-PURPOSE:
+# Git based autoforwardporter.
 
 The purpose of this tool is to assist downstreams in maintaining local changes
 to Debian packages. In particular automating the merging of those local changes
@@ -11,7 +9,7 @@ yourself to a major derivative.
 this document describes the theory of operation and the available settings. See
 the file tutorial/README for a quick start guide.
 
-------------The working repo-------------
+## The working repo
 
 The working repo is a repository with multiple suites in groups. The "main"
 suite of each group represents what you use/ship. The "staging" suite represents
@@ -32,7 +30,7 @@ demo/workingrepo/conf directory.
 If desired the autoforwardporter can generate a filter list for reprepro to
 control what packages are imported into the working repo. 
 
-------------Version markers--------------
+## Version markers
 
 Markers in the version number are used to identify versions locally produced by
 your downstream project. These markers will normally take the form of a plus
@@ -50,7 +48,7 @@ Autoforwardportergit also supports a "revert marker". This is used to mark
 packages where you have reverted your local changes, but still need to raise
 the version number to preserve version ordering.
 
-------------dscdirtogit----------------
+## dscdirtogit
 
 The first stage of the process is getting your source packages into git with
 a sensible history. This is the function of dscdirtogit.
@@ -87,7 +85,7 @@ dscdirtogitdriver is invoked as
 Options for dscdirtogit can be specified by the dscdirtogitargs option in the
 main section of the autoforwardportergit configuration file.
 
------------the actual autoforwardporter----------
+## the actual autoforwardporter
 
 The actual autoforwardporter is conceptually simple. Take the downstream version
 merge it with the new version from the upstream distro and build a source
@@ -118,7 +116,7 @@ The autoforwardporter is invoked as
 
 <path>/forwardportdriver <mainsuite>
 
---------------whitelists--------------------
+## whitelists
 The git import and forward porting processes will only be performed on
 whitelisted files.
 
@@ -130,16 +128,17 @@ The whiltelists are located in the configuratoin directory (see later).
 There is a tool updateimportwhitelist which can be used to add entries
 from the autoforwardporter whitelist to the 
 
---------------output and log files-----------
+## output and log files
 output files and logs are placed in an output directory. Before trying to
 perform a forward port the autoforwardporter will check for a log file. 
 Therefore each package/version combination will only be tried once, if you want
 to retry a package/version then simply delete the log file and re-run the
 autoforwardporter.
 
---------------dependencies---------------
+## dependencies
 dscdirtogit and autoforwardportergit require the following packages
 
+build-essential
 git
 dgit 
 python3
@@ -151,7 +150,7 @@ quilt (for fixing up quilt series)
 reprepro (for changestool and also reccomended for managing your working repo).
 python3-bs4 (only if you intend to use snapshotsecure)
 
---------------configuration---------------
+## configuration
 
 The autoforwardporter requires configuration. To do this a configuration
 directory is used. By default this is ~/.autoforwardportergit but this can be
@@ -170,12 +169,12 @@ can also be specified.
 A commented example configuration file with explanations of the settings can 
 be found in the tests subdirectory.
 
--------------optional feature, sbuild---------------
+## optional feature, sbuild
 Optionally the autoforwardporter can call sbuild to build the resulting packages
 so that you get binaries as well as dscs. You will need to set up sbuild so it
 can be used to build source packages for your staging suite(s).
 
--------------optional feature, dgit push------------
+## optional feature, dgit push
 Optionally the autoforwardporter can perform a dgit push to push the results
 to a dgit server.
 
@@ -188,7 +187,7 @@ to everyone who may receive your dscs.
 Currently dgit push is "nerfed" so it uploads to the dgit repos but doesn't
 actually upload to the archive. This may be made configurarable later.
 
-------------optional tool, branch pointer------------
+## optional tool, branch pointer
 Branchpointer creates branches in the git repo pointing at the version that is
 in each suite.
 
@@ -198,7 +197,7 @@ It is invoked as
 
 It uses the same whitelist as the importer.
 
-------------optional tool, pushtogithub-------------
+## optional tool, pushtogithub
 Pushtogithub pushes the tags produced by dscdirtogit and the branches produced
 by branchpointer to github.
 
@@ -214,7 +213,7 @@ It requires a netrc file with the github login settings, the location of this
 file is configured in the ini file by the "netrcfile" setting. You must also
 specify your github project in the "githubproject" setting.
 
------------optional tool, snapshotsecure-------------
+## optional tool, snapshotsecure
 
 snapshotsecure is a tool for retrieving source packages from snapshot.debian.org
 in a reasonablly secure manner. It can optionally be called by dscdirtogit to

@@ -34,6 +34,9 @@ import os
 import subprocess
 import hashlib
 import argparse
+import socket
+import http.client
+import collections
 
 parser = argparse.ArgumentParser(description="retrieve a source package from snapshot.debian.org with gpg verification\n"+
 "the source package will be stored in the current directory\n"+
@@ -83,10 +86,58 @@ if colonpos >= 0:
 else:
 	versionnoepoch=version
 
-url='http://snapshot.debian.org/mr/package/'+package+'/'+version+'/srcfiles?fileinfo=1'
+#unfortunately snapshot.debian.org is served from two sites and sometimes a
+#file is missing from one site. So we need to try all IPs before concluding 
+#a url is unretreivable.
 
-with urllib.request.urlopen(url) as response:
-	jsondata = response.read()
+#get all ips for snapshot.debian.org
+entries = socket.getaddrinfo('snapshot.debian.org',80)
+snapshotips = collections.OrderedDict()
+for entry in entries:
+	snapshotips[entry[4][0]]=1
+	#print(entry[4][0])
+snapshotipindex = 0
+snapshotips = list(snapshotips)
+
+#print(repr(snapshotips))
+#exit(1);
+
+class SnapshotHTTPConnection(http.client.HTTPConnection):
+	def connect(self):
+		self.sock = socket.create_connection((snapshotips[snapshotipindex],self.port),self.timeout)
+
+
+class SnapshotHTTPHandler(urllib.request.HTTPHandler):
+	def http_open(self,req):
+		return self.do_open(SnapshotHTTPConnection,req)
+
+snapshotopener = urllib.request.build_opener(SnapshotHTTPHandler)
+
+#exit(1)
+def getsnapshoturl(url):
+	global snapshotipindex
+	startipindex = snapshotipindex
+	count = 0;
+	data = None;
+	while (data is None) and ((count == 0) or (snapshotipindex != startipindex)):
+		try:
+			with snapshotopener.open(url) as response:
+				data = response.read()
+		except urllib.error.URLError as e:
+			failedindex = snapshotipindex;
+			count = count + 1;
+			snapshotipindex = snapshotipindex + 1;
+			if snapshotipindex >= len(snapshotips):
+				snapshotipindex = 0;
+			if count < len(snapshotips):
+				print('failed to fetch '+url+' from '+snapshotips[failedindex]+' trying next IP')
+			else:
+				print('failed to fetch '+url+' from '+snapshotips[failedindex]+' no more IPs, returning error to caller')
+				raise
+	return data
+
+url='http://snapshot.debian.org/mr/package/'+package+'/'+version+'/srcfiles?fileinfo=1'
+jsondata = getsnapshoturl(url)
 
 jsondecoded = json.loads(jsondata.decode("utf-8"))
 
@@ -103,8 +154,7 @@ for sha1, info in jsondecoded['fileinfo'].items():
 #string. We also need to avoid any links with complex urls, which likely represent page chrome.
 def snapshotsubdirlist(url):
 	result = []
-	with urllib.request.urlopen(url) as response:
-		pagedata = response.read()
+	pagedata = getsnapshoturl(url)
 	soup = BeautifulSoup(pagedata, "lxml")
 	p = re.compile('[a-zA-Z0-9\-]+/',re.ASCII)
 	for item in soup.find_all('a'):
@@ -167,8 +217,7 @@ for instance in instances:
 			releaseurl = url + 'Release'
 			print('searching '+releaseurl+' aname='+aname)
 			try:
-				with urllib.request.urlopen(releaseurl) as response:
-					releasedata = response.read()
+				releasedata = getsnapshoturl(releaseurl)
 			except urllib.error.URLError as e:
 				print('WARNING: failed to fetch '+releaseurl+' continueing search')
 				continue
@@ -215,8 +264,7 @@ for instance in instances:
 				#print(sourcesurl)
 				sourcescompressed = io.BytesIO()
 				try:
-					with urllib.request.urlopen(sourcesurl) as response:
-						sourcescompressed.write(response.read())
+					sourcescompressed.write(getsnapshoturl(sourcesurl))
 				except urllib.error.URLError as e:
 					print('WARNING: failed to fetch '+sourcesurl+' continueing search')
 					continue
@@ -241,8 +289,7 @@ if not (finalentry is None):
 	(releaseurl,releasedata,sourcesdata,seents,archivename,directory,files) = finalentry
 	gpgurl = releaseurl+'.gpg'
 	print(gpgurl)
-	with urllib.request.urlopen(gpgurl) as response:
-		gpgdata = response.read()
+	gpgdata = getsnapshoturl(gpgurl)
 	
 	
 	f = open(package+'_'+version+'_Release.gpg','wb')
@@ -352,8 +399,7 @@ if not (finalentry is None):
 			#file does not exist, download it
 			fileurl='http://snapshot.debian.org/archive/'+archivename+'/'+seents+'/'+directory+'/'+filename
 			#print(fileurl)
-			with urllib.request.urlopen(fileurl) as response:
-				filedata = response.read()
+			filedata = getsnapshoturl(fileurl)
 			#m = hashlib.sha256()
 			m.update(filedata)
 			hash = m.hexdigest();

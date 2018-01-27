@@ -123,7 +123,7 @@ def getsnapshoturl(url):
 		try:
 			with snapshotopener.open(url) as response:
 				data = response.read()
-		except urllib.error.URLError as e:
+		except (urllib.error.URLError, http.client.IncompleteRead) as e:
 			failedindex = snapshotipindex;
 			count = count + 1;
 			snapshotipindex = snapshotipindex + 1;

@@ -37,7 +37,7 @@ for PACKAGE in $(cat $AFPGCONFIG/whitelist.pushtogithub ) ; do
     if [[ $PACKAGE == libreoffice ]]; then
         #unfortunately stretch's libreoffice can't be pushed to github due to
         #large files.
-        git push -u github `git tag | grep -v 5.`
+        git push -u github `git tag | grep -v 5. | grep -v 6.`
     else
         git push -u github --tags
     fi

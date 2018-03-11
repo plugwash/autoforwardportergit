@@ -70,9 +70,9 @@ fi
 (if grep ^debian/control.md5sum$ ../conflicts ; then
 	#"kernel style" package,
 	(debian/rules clean || true) && debian/rules clean && git add debian/control.md5sum debian/control
-	if [ -f debian/config.defines.dump ]; then git add debian/rules.gen
-	if [ -f debian/rules.gen ]; then git add debian/rules.gen
-	if [ -f debian/tests/control ]; then git add debian/rules.gen
+	if [ -f debian/config.defines.dump ]; then git add debian/config.defines.dump ; fi
+	if [ -f debian/rules.gen ]; then git add debian/rules.gen ; fi
+	if [ -f debian/tests/control ]; then git add debian/tests/control ; fi
 fi) || true
 
 if grep ^debian/control$ ../conflicts ; then

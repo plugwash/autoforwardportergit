@@ -203,6 +203,38 @@ for instance in instances:
 		if not (finalentry is None): break
 		print('searching '+distsurl)
 		dirlist = snapshotsubdirlist(distsurl)
+		#re-order dir list to put likely distributions at the top and save time/bandwidth
+		likelylist = []
+		unlikelylist = []
+		for link in dirlist:
+			comparestr = link.replace('-debug','')
+			comparestr = comparestr.replace('/','')
+			#print(comparestr)
+			if "deb" in version:
+				if "deb6" in version:
+					likely = 'squeeze-' in comparestr
+				if "deb7" in version:
+					likely = 'wheezy-' in comparestr
+				if "deb8" in version:
+					likely = 'jessie-' in comparestr
+				if "deb9" in version:
+					likely = 'stretch-' in comparestr
+				if "deb9" in version:
+					likely = 'buster-' in comparestr
+				else: 
+					likely = '-' in comparestr
+			elif "exp" in version:
+				likely = comparestr == 'experimental'
+			else:
+				likely = comparestr == 'sid'
+			if likely:
+				likelylist.append(link)
+			else:
+				unlikelylist.append(link)
+		dirlist = likelylist + unlikelylist
+		#print(repr(likelylist))
+		#print(repr(unlikelylist))
+		#print(repr(dirlist))
 		for link in dirlist:
 			if not (finalentry is None): break
 			#regular potato archive doesn't have Release.gpg but potato security archive does

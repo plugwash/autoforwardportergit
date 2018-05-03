@@ -21,6 +21,7 @@
 import sys
 import re
 import subprocess
+import collections
 
 filetofix = sys.argv[1]
 tempdir = sys.argv[2]
@@ -29,6 +30,9 @@ f = open(filetofix,'rb')
 lines = f.readlines()
 f.close()
 
+ld = []
+lm = []
+lu = []
 fd = open(tempdir+'/dtmp','wb')
 fm = open(tempdir+'/mtmp','wb')
 fu = open(tempdir+'/utmp','wb')
@@ -89,23 +93,162 @@ for line in lines:
 				sys.exit(1);
 		else:
 			if ((mode == 0) or (mode == 1)):
-				writesplitline(fd,line)
+				ld.append(line)
 			if ((mode == 0) or (mode == 2)):
-				writesplitline(fm,line)
+				lm.append(line)
 			if ((mode == 0) or (mode == 3)):
-				writesplitline(fu,line)
+				lu.append(line)
 
 
+def trymerge(ld,lm,lu):
+	fd = open(tempdir+'/dtmp','wb')
+	fm = open(tempdir+'/mtmp','wb')
+	fu = open(tempdir+'/utmp','wb')
+	
+	for line in ld:
+		writesplitline(fd,line)
+	
+	for line in lm:
+		writesplitline(fm,line)
+	
+	for line in lu:
+		writesplitline(fu,line)
+	
+	fd.close()
+	fm.close()
+	fu.close()
 
-fd.close()
-fm.close()
-fu.close()
+	command = ['merge',tempdir+'/dtmp',tempdir+'/mtmp',tempdir+'/utmp']
+	print(command, flush=True)
+	return subprocess.call(command)
 
-command = ['merge',tempdir+'/dtmp',tempdir+'/mtmp',tempdir+'/utmp']
-print(command, flush=True)
-if (subprocess.call(command) != 0): 
-    print('merge of processed files failed')
-    sys.exit(1)
+def splitonbuilddeps(lines):
+	bbd = []
+	bd = []
+	abd = []
+	mode = 0;
+	for line in lines:
+		if (mode == 0):
+			if line.startswith(b'Build-Depends:'):
+				mode = 1
+				bd.append(line)
+			else:
+				bbd.append(line)
+		elif (mode == 1):
+			if (line.startswith(b' ') or line.startswith(b"\t")) and not line.isspace():
+				bd.append(line)
+			else:
+				mode = 2
+				abd.append(line)
+		else:
+			abd.append(line)
+	if mode != 2:
+		print('failed to split build-depends from rest of control content')
+		sys.exit(1);
+	return (bbd,bd,abd)
+
+def parsebuilddeps(lines):
+	text = lines[0][14:] + b''.join(lines[1:])
+	builddeplist = text.split(b',')
+	builddepdict = collections.OrderedDict()
+	for builddep in builddeplist:
+		builddep = builddep.strip()
+		#print(builddep)
+		match = re.match(b'[a-zA-Z0-9+-.]*',builddep)
+		#print(repr(match.span()))
+		#sys.exit(1)
+		splitpos = match.span()[1]
+		dep = builddep[:splitpos]
+		meta = builddep[splitpos:]
+		#print((dep,meta))
+		#sys.exit(1)
+		#split = re.split(b'[^a-zA-Z0-9+-.]',builddep,1)
+		#if len(split) == 2:
+		#	(dep,meta) = split
+		#else:
+		#	dep = builddep
+		#	meta = b''
+		if dep in builddepdict:
+			builddepdict[dep].append(meta)
+		else:
+			builddepdict[dep] = [meta]
+	#for line in builddepdict.items():
+	#	print(line)
+	return builddepdict
+
+if (trymerge(ld,lm,lu) != 0): 
+	print('merge of processed files failed, trying plan B build-dep fixer')
+	
+	(ldbbd , ldbd , ldabd) = splitonbuilddeps(ld)
+	(lmbbd , lmbd , lmabd) = splitonbuilddeps(lm)
+	(lubbd , lubd , luabd) = splitonbuilddeps(lu)
+	
+	#for line in ldbd:
+	#	print(line)
+	#pase build-depends into dictionaries
+	ddbd = parsebuilddeps(ldbd)
+	dmbd = parsebuilddeps(lmbd)
+	dubd = parsebuilddeps(lubd)
+	
+	#extract sets from dictionaries.
+	sdbd = set(ddbd.keys())
+	smbd = set(dmbd.keys())
+	subd = set(dubd.keys())
+
+	dsadded = sdbd - smbd
+	dsremoved = smbd - sdbd
+	usadded = subd - smbd
+	usremoved = smbd - subd
+	#print(dsadded)
+	#print(dsremoved)
+	#print(usadded)
+	#print(usremoved)
+
+	#sys.exit(1)
+
+	finalset = smbd | usadded | dsadded - usremoved - dsremoved
+
+	final = collections.OrderedDict()
+	for dep in dubd:
+		final[dep] = 1;
+	for dep in ddbd:
+		final[dep] = 1;
+	for dep in final:
+		print(dep)
+		if dep not in ddbd:
+			final[dep] = dubd[dep]
+		elif dep not in dubd:
+			final[dep] = ddbd[dep]
+		elif dubd[dep] == ddbd[dep]:
+			final[dep] = ddbd[dep]
+		else:
+			print('upstream and downstream have dependency on '+dep.decode('ascii')+' with different metadata, this is currently unhandled, upstream metadata is '+repr(dubd[dep])+' downstream metadata is '+repr(ddbd[dep]))
+			exit(1)
+	firstdep = True
+	regeneratedbuilddeps = []
+	for (dep,meta) in final.items():
+		for metaentry in meta:
+			if firstdep:
+				line = b'Build-Depends: '
+				firstdep = False
+			else:
+				regeneratedbuilddeps[-1] = regeneratedbuilddeps[-1][:-1]+b",\n"
+				line = b'               '
+			#print(repr(dep)+' '+repr(metaentry))
+			line += dep + metaentry + b"\n"
+			regeneratedbuilddeps.append(line)
+
+	ld = ldbbd + regeneratedbuilddeps + ldabd
+	lm = lmbbd + regeneratedbuilddeps + lmabd
+	lu = lubbd + regeneratedbuilddeps + luabd
+
+
+	#usadded 
+
+	if (trymerge(ld,lm,lu) != 0): 
+		
+		print('merge of processed files failed, after plan B build-dep fixer, giving up')
+		sys.exit(1)
 
 fd = open(tempdir+'/dtmp','rb')
 

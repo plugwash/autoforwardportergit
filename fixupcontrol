@@ -22,6 +22,7 @@ import sys
 import re
 import subprocess
 import collections
+from difflib import SequenceMatcher
 
 filetofix = sys.argv[1]
 tempdir = sys.argv[2]
@@ -151,8 +152,12 @@ def parsebuilddeps(lines):
 	text = lines[0][14:] + b''.join(lines[1:])
 	builddeplist = text.split(b',')
 	builddepdict = collections.OrderedDict()
-	for builddep in builddeplist:
-		builddep = builddep.strip()
+	for builddepraw in builddeplist:
+		builddep = builddepraw.strip()
+		p = builddepraw.find(builddep)
+		whitespacebefore = builddepraw[:p]
+		whitespaceafter = builddepraw[p+len(builddep):]
+		#print(repr(whitespacebefore)+' '+repr(builddep)+' '+repr(whitespaceafter))
 		#print(builddep)
 		match = re.match(b'[a-zA-Z0-9+-.]*',builddep)
 		#print(repr(match.span()))
@@ -169,12 +174,38 @@ def parsebuilddeps(lines):
 		#	dep = builddep
 		#	meta = b''
 		if dep in builddepdict:
-			builddepdict[dep].append(meta)
+			builddepdict[dep].append((meta,whitespacebefore,whitespaceafter))
 		else:
-			builddepdict[dep] = [meta]
+			builddepdict[dep] = [(meta,whitespacebefore,whitespaceafter)]
 	#for line in builddepdict.items():
 	#	print(line)
+	#sys.exit(1)
 	return builddepdict
+
+def mergelists(a,b):
+	sm = SequenceMatcher(a = a, b = b)
+	matching_blocks = sm.get_matching_blocks()
+	#note: last block is a dummy;
+	block = None
+	aindex = 0
+	bindex = 0
+	mergedlist = []
+	for nextblock in matching_blocks:
+		if block is not None:
+			for i in range(0,block.size):
+				mergedlist.append(a[block.a+i])
+			aindex = block.a + block.size
+			bindex = block.b + block.size
+		for i in range (aindex,nextblock.a):
+			mergedlist.append(a[i])
+		for i in range (bindex,nextblock.b):
+			mergedlist.append(b[i])
+		block = nextblock
+
+	#for entry in mergedlist:
+	#	print(entry)
+	#exit(1)
+	return mergedlist
 
 if (trymerge(ld,lm,lu) != 0): 
 	print('merge of processed files failed, trying plan B build-dep fixer')
@@ -182,6 +213,14 @@ if (trymerge(ld,lm,lu) != 0):
 	(ldbbd , ldbd , ldabd) = splitonbuilddeps(ld)
 	(lmbbd , lmbd , lmabd) = splitonbuilddeps(lm)
 	(lubbd , lubd , luabd) = splitonbuilddeps(lu)
+	
+	spacecount = 1;
+	if len(lubd) >= 2:
+		#print(lubd[1][spacecount])
+		#note: in python3 indexing a string produces a string
+		#but indexing a "bytes" produces a number
+		while lubd[1][spacecount] == b' '[0]:
+			spacecount += 1
 	
 	#for line in ldbd:
 	#	print(line)
@@ -209,34 +248,43 @@ if (trymerge(ld,lm,lu) != 0):
 	finalset = smbd | usadded | dsadded - usremoved - dsremoved
 
 	final = collections.OrderedDict()
-	for dep in dubd:
-		final[dep] = 1;
-	for dep in ddbd:
-		final[dep] = 1;
-	for dep in final:
-		print(dep)
+	#for dep in dubd:
+	#	final[dep] = 1;
+	#for dep in ddbd:
+	#	final[dep] = 1;
+	for dep in mergelists(list(dubd.keys()),b = list(ddbd.keys())):
+		#print(dep)
 		if dep not in ddbd:
 			final[dep] = dubd[dep]
 		elif dep not in dubd:
 			final[dep] = ddbd[dep]
-		elif dubd[dep] == ddbd[dep]:
-			final[dep] = ddbd[dep]
+		elif set(p[0] for p in dubd[dep]) == set(p[0] for p in ddbd[dep]):
+			final[dep] = dubd[dep]
 		else:
-			print('upstream and downstream have dependency on '+dep.decode('ascii')+' with different metadata, this is currently unhandled, upstream metadata is '+repr(dubd[dep])+' downstream metadata is '+repr(ddbd[dep]))
+			#print(repr(dubd[dep]))
+			#print(repr(dubd[dep][0]))
+			print('upstream and downstream have dependency on '+dep.decode('ascii')+' with different metadata, this is currently unhandled, upstream metadata is '+list(p[0] for p in dubd[dep])+' downstream metadata is '+list(p[0] for p in ddbd[dep]))
 			exit(1)
 	firstdep = True
 	regeneratedbuilddeps = []
+	#print(repr(final))
+	queued = ''
 	for (dep,meta) in final.items():
-		for metaentry in meta:
+		for (metaentry,whitespacebefore,whitespaceafter) in meta:
 			if firstdep:
-				line = b'Build-Depends: '
+				line = b'Build-Depends:'
 				firstdep = False
 			else:
-				regeneratedbuilddeps[-1] = regeneratedbuilddeps[-1][:-1]+b",\n"
-				line = b'               '
+				line = b'';
+				regeneratedbuilddeps[-1] += queued
 			#print(repr(dep)+' '+repr(metaentry))
-			line += dep + metaentry + b"\n"
+			line += whitespacebefore + dep + metaentry
+			#we don't want to add this stuff for the last line, so queue it here and
+			#add it on the next iteration
+			queued =  whitespaceafter+ b','
 			regeneratedbuilddeps.append(line)
+	#make sure end of lines in list match up with newlines and add final newline
+	regeneratedbuilddeps = list(line+b'\n' for line in b''.join(regeneratedbuilddeps).split(b'\n'))
 
 	ld = ldbbd + regeneratedbuilddeps + ldabd
 	lm = lmbbd + regeneratedbuilddeps + lmabd

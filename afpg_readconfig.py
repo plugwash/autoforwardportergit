@@ -27,6 +27,7 @@ config['main']['dobranchpointer'] = 'yes'
 config['main']['dogithubpush'] = 'no'
 config['main']['useimportwhitelistforgithub'] = 'no'
 config['main']['dscdirtogitargs'] = ''
+config['main']['aggressivesymbolsfixup'] = 'no'
 
 config.read(configfile)
 

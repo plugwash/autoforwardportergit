@@ -83,6 +83,14 @@ if grep ^debian/control.in$ ../conflicts ; then
 	($SCRIPTDIR/fixupcontrol debian/control.in .. && git add debian/control.in) || true
 fi
 
+if egrep '^debian/.*\.symbols$' ../conflicts ; then
+	echo conflicting symbols file found
+	for FILE in `egrep '^debian/.*\.symbols$' ../conflicts` ; do
+		($SCRIPTDIR/fixupsymbols $FILE .. && git add $FILE) || true
+	done
+	#($SCRIPTDIR/fixupcontrol debian/control .. && git add debian/control) || true
+fi
+
 
 #make sure no branch is checked out in our destination repo so that the push doesn't fail
 cd $gitdir/${PACKAGEDIR}

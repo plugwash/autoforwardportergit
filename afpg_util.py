@@ -36,9 +36,14 @@ def mergelists(a,b):
 		if block is not None:
 			for i in range(0,block.size):
 				item = a[block.a+i]
-				acounts[item] += 1
-				bcounts[item] += 1
-				mcounts[item] += 1
+				#logically the counts would be incremented here but
+				#it's not actually nesacery because all we do with
+				#the counts is compare them to each other, so
+				#incrementing none of the counts is equivilent to
+				#incrementing all of them.
+				#acounts[item] += 1
+				#bcounts[item] += 1
+				#mcounts[item] += 1
 				mergedlist.append(a[block.a+i])
 			aindex = block.a + block.size
 			bindex = block.b + block.size

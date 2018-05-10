@@ -23,6 +23,7 @@ import re
 import subprocess
 import collections
 from difflib import SequenceMatcher
+from afpg_util import mergelists
 
 filetofix = sys.argv[1]
 tempdir = sys.argv[2]
@@ -181,31 +182,6 @@ def parsebuilddeps(lines):
 	#	print(line)
 	#sys.exit(1)
 	return builddepdict
-
-def mergelists(a,b):
-	sm = SequenceMatcher(a = a, b = b)
-	matching_blocks = sm.get_matching_blocks()
-	#note: last block is a dummy;
-	block = None
-	aindex = 0
-	bindex = 0
-	mergedlist = []
-	for nextblock in matching_blocks:
-		if block is not None:
-			for i in range(0,block.size):
-				mergedlist.append(a[block.a+i])
-			aindex = block.a + block.size
-			bindex = block.b + block.size
-		for i in range (aindex,nextblock.a):
-			mergedlist.append(a[i])
-		for i in range (bindex,nextblock.b):
-			mergedlist.append(b[i])
-		block = nextblock
-
-	#for entry in mergedlist:
-	#	print(entry)
-	#exit(1)
-	return mergedlist
 
 if (trymerge(ld,lm,lu) != 0): 
 	print('merge of processed files failed, trying plan B build-dep fixer')

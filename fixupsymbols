@@ -24,6 +24,7 @@ import subprocess
 import collections
 import afpg_readconfig
 from difflib import SequenceMatcher
+from afpg_util import mergelists
 
 aggressive = afpg_readconfig.readconfigentry('main','aggressivesymbolsfixup').upper() == 'YES'
 
@@ -79,32 +80,6 @@ for line in lines:
 				lm.append(line)
 			if ((mode == 0) or (mode == 3)):
 				lu.append(line)
-
-
-def mergelists(a,b):
-	sm = SequenceMatcher(a = a, b = b)
-	matching_blocks = sm.get_matching_blocks()
-	#note: last block is a dummy;
-	block = None
-	aindex = 0
-	bindex = 0
-	mergedlist = []
-	for nextblock in matching_blocks:
-		if block is not None:
-			for i in range(0,block.size):
-				mergedlist.append(a[block.a+i])
-			aindex = block.a + block.size
-			bindex = block.b + block.size
-		for i in range (aindex,nextblock.a):
-			mergedlist.append(a[i])
-		for i in range (bindex,nextblock.b):
-			mergedlist.append(b[i])
-		block = nextblock
-
-	#for entry in mergedlist:
-	#	print(entry)
-	#exit(1)
-	return mergedlist
 
 def makesymbolsdict(lines):
 	sd = collections.OrderedDict()

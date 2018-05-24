@@ -11,15 +11,15 @@ function pushifexists {
 }
 
 for PACKAGE in $(cat $AFPGCONFIG/whitelist.pushtogithub ) ; do
-    #| grep -v glibc
-    echo processing $PACKAGE
-    if [[ $PACKAGE == lib* ]]; then
+  echo processing $PACKAGE
+  if [[ $PACKAGE == lib* ]]; then
         PACKAGEDIR=${PACKAGE:0:4}/$PACKAGE
-    else
+  else
         PACKAGEDIR=${PACKAGE:0:1}/$PACKAGE
-    fi
+  fi
 
-    cd $gitdir/$PACKAGEDIR
+  cd $gitdir/$PACKAGEDIR
+  if [[ `git for-each-ref refs/tags refs/heads | md5sum | cut -d ' ' -f 1` != `md5sum .git/lastgithubpush | cut -d ' ' -f 1` ]] ; then
 
     #github doesn't like + signs in repo names, use - instead (could potentially cause conflicts but probablly won't)
     GITHUBREPO=$(echo $PACKAGE | sed s/+/-/)
@@ -55,4 +55,5 @@ for PACKAGE in $(cat $AFPGCONFIG/whitelist.pushtogithub ) ; do
         fi
     done
     git for-each-ref refs/tags refs/heads > .git/lastgithubpush
+  fi
 done

@@ -1,5 +1,5 @@
-#!/bin/bash -ev
-set -o pipefail
+#!/usr/bin/python3
+#set -o pipefail
 #Copyright (c) 2009-2014 Peter M. Green and Adam D. Barratt
 #
 #Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -19,12 +19,16 @@ set -o pipefail
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
+import sys
+import subprocess
 
 #based on code by adsb from 
 #http://anonscm.debian.org/gitweb/?p=mirror/britney1.git;a=blob_plain;f=britney;h=094ec121d5bea3e68af76c493f2b9d91d734f45e;hb=HEAD
 #I don't pretend to understand this perl code
-process_pkg_list() {
-  perl "-MAptPkg::Config '\$_config'" -e '
+def process_pkg_list(infile,outfile):
+	ifh = open(infile,'rb')
+	ofh = open(outfile,'wb')
+	subprocess.check_call(['perl',"-MAptPkg::Config '$_config'", '-e','''
     my $versioning = $_config->system->versioning;
 
     while (<>) {
@@ -46,60 +50,108 @@ process_pkg_list() {
       @versions = (reverse sort {$versioning->compare($a,$b)} keys %{$data{"$pkg2"}});
       print "$pkg2 $versions[0]\n";
     }
-  '
-}
+  '''],stdin=ifh,stdout=ofh)
+	ifh.close()
+	ofh.close()
 
-set -o pipefail
+#set -o pipefail
 
 
-MAINSUITE=$1
+MAINSUITE=sys.argv[1]
 
-SCRIPTDIR=`dirname $(readlink -f $0)`
-source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE)
-$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE
+import os
+SCRIPTDIR=os.path.dirname(os.path.realpath(__file__))
+#source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE)
+#$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE
+import afpg_readconfig
 
-cd $workingrepo
+workingrepo = afpg_readconfig.readconfigentry('main','workingrepo')
+gitdir = afpg_readconfig.readconfigentry('main','gitdir')
+tmp = afpg_readconfig.readconfigentry('main','tmp')
+AFPGCONFIG = afpg_readconfig.readconfigentry('main','AFPGCONFIG')
+STAGINGSUITE = afpg_readconfig.readconfigentry(MAINSUITE,'STAGINGSUITE')
+UPSTREAMSUITE = afpg_readconfig.readconfigentry(MAINSUITE,'UPSTREAMSUITE')
 
-for SUITE in ${MAINSUITE} ${STAGINGSUITE} ${UPSTREAMSUITE} ; do
-    sources=$workingrepo/dists/${SUITE}/*/source/Sources
-    cat $sources | process_pkg_list > ${tmp}/sources-${SUITE}-processed
-done
+import os
+os.chdir(workingrepo)
 
-for PACKAGE in $(cat $AFPGCONFIG/whitelist.import) ; do
-    echo ${PACKAGE}
-    MAINVERSION=`grep ^${PACKAGE}" " ${tmp}/sources-${MAINSUITE}-processed | cut -d " " -f 2` || true
-    STAGINGVERSION=`grep ^${PACKAGE}" " ${tmp}/sources-${STAGINGSUITE}-processed | cut -d " " -f 2` || true
-    DEBVERSION=`grep ^${PACKAGE}" " ${tmp}/sources-${UPSTREAMSUITE}-processed | cut -d " " -f 2` || true
-    echo ${PACKAGE}
-    echo main version $MAINVERSION
-    echo staging version $STAGINGVERSION
-    echo deb version $DEBVERSION
+import glob
 
-    if [[ $PACKAGE == lib* ]]; then
-        PACKAGEDIR=${PACKAGE:0:4}/$PACKAGE
-    else
-        PACKAGEDIR=${PACKAGE:0:1}/$PACKAGE
-    fi
+def concatenatefiles(infiles,outfile):
+	ofh = open(outfile,'wb')
+	for infile in infiles:
+		ifh = open(infile,'rb')
+		ofh.write(ifh.read())
+		ifh.close()
+	ofh.close()
 
-    cd $gitdir/$PACKAGEDIR
-    if grep ref: .git/HEAD > /dev/null; then
+import collections
+
+versions={}
+for SUITE in [MAINSUITE,STAGINGSUITE,UPSTREAMSUITE]:
+    sources=glob.glob(workingrepo+'/dists/'+SUITE+'/*/source/Sources')
+    #print(tmp)
+    concatenatefiles(sources,tmp+'/sources-'+SUITE+'-catted')
+    process_pkg_list(tmp+'/sources-'+SUITE+'-catted', tmp+'/sources-'+SUITE+'-processed')
+    f = open(tmp+'/sources-'+SUITE+'-processed','r')
+    #make not found packages read as an empty string
+    v = collections.defaultdict(str)
+    for line in f:
+        (name,version) = line.strip().split(' ')
+        v[name] = version
+    versions[SUITE] = v
+    f.close()
+    #print(sources)
+
+import re
+
+def versiontotag(version):
+	tag = str(version)
+	tag = tag.replace(":","%")
+	tag = tag.replace("~","_")
+	tag = re.sub('\.(?=\.|$|lock$)','.#',tag)
+	return tag
+
+
+wl = open(AFPGCONFIG+'/whitelist.import')
+for PACKAGE in wl:
+  PACKAGE = PACKAGE.strip()
+  print(repr(PACKAGE))
+  if len(PACKAGE) > 0:
+    MAINVERSION=versions[MAINSUITE][PACKAGE]
+    STAGINGVERSION=versions[STAGINGSUITE][PACKAGE]
+    DEBVERSION=versions[UPSTREAMSUITE][PACKAGE]
+    #print(PACKAGE)
+    print('main version '+MAINVERSION)
+    print('staging version '+STAGINGVERSION)
+    print('deb version '+DEBVERSION)
+
+    if PACKAGE[0:3] == 'lib':
+        PACKAGEDIR=PACKAGE[0:4]+'/'+PACKAGE
+    else:
+        PACKAGEDIR=PACKAGE[0:1]+'/'+PACKAGE
+
+    os.chdir(gitdir+'/'+PACKAGEDIR)
+    f = open('.git/HEAD','r')
+    contents = f.read()
+    f.close()
+    if contents[0:4] == 'ref:':
         #faster way to detach
-        git update-ref --no-deref HEAD $(git rev-parse --verify HEAD) || true > /dev/null 2>/dev/null
+        #print('foo',flush=True)
+        os.system('git update-ref --no-deref HEAD $(git rev-parse --verify HEAD > /dev/null 2> /dev/null ) >/dev/null 2>/dev/null || true')
+        #print('bar',flush=True)
         #git checkout -q --detach || true
-    fi
-    if [[ !  -z  $MAINVERSION ]]; then
-        MAINTAG=$($SCRIPTDIR/versiontotag $MAINVERSION)
-        git branch -f ${MAINSUITE} $MAINTAG 
-    fi
 
-    if [[ !  -z  $STAGINGVERSION ]]; then
-        STAGINGTAG=$($SCRIPTDIR/versiontotag $STAGINGVERSION)
-        git branch -f ${STAGINGSUITE} $STAGINGTAG
-    fi
+    if len(MAINVERSION) != 0:
+        MAINTAG=versiontotag(MAINVERSION)
+        subprocess.check_call(['git','branch','-f',MAINSUITE,MAINTAG])
 
-    if [[ !  -z  $DEBVERSION ]]; then
-        DEBTAG=$($SCRIPTDIR/versiontotag $DEBVERSION)
-        git branch -f ${UPSTREAMSUITE} $DEBTAG 
-    fi
+    if len(STAGINGVERSION) != 0:
+        STAGINGTAG=versiontotag(STAGINGVERSION)
+        subprocess.check_call(['git','branch','-f',STAGINGSUITE,STAGINGTAG])
 
-done
+    if len(DEBVERSION) != 0:
+        DEBTAG=versiontotag(DEBVERSION)
+        subprocess.check_call(['git','branch','-f',UPSTREAMSUITE,DEBTAG])
+
+wl.close()

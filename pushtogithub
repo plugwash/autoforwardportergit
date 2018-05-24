@@ -54,4 +54,5 @@ for PACKAGE in $(cat $AFPGCONFIG/whitelist.pushtogithub ) ; do
             pushifexists $UPSTREAMSUITE
         fi
     done
+    git for-each-ref refs/tags refs/heads > .git/lastgithubpush
 done

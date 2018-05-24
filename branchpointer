@@ -82,7 +82,11 @@ for PACKAGE in $(cat $AFPGCONFIG/whitelist.import) ; do
     fi
 
     cd $gitdir/$PACKAGEDIR
-    git checkout -q --detach || true
+    if grep ref: .git/HEAD > /dev/null; then
+        #faster way to detach
+        git update-ref --no-deref HEAD $(git rev-parse --verify HEAD) || true > /dev/null 2>/dev/null
+        #git checkout -q --detach || true
+    fi
     if [[ !  -z  $MAINVERSION ]]; then
         MAINTAG=$($SCRIPTDIR/versiontotag $MAINVERSION)
         git branch -f ${MAINSUITE} $MAINTAG 

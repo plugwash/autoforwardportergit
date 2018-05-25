@@ -174,12 +174,13 @@ def importdsc(version,tagname,repo):
 					currentpackage = change.package
 				if (cversion != version):
 					ctagname = versiontotag(cversion)
-					parenttagrepo=repos[change.package]
-					ctag = tryfindtag(parenttagrepo,ctagname)
-					if ctag != None:
-						parenttagname = ctagname
-						parenttag = ctag
-						break
+					if change.package in repos:
+						parenttagrepo=repos[change.package]
+						ctag = tryfindtag(parenttagrepo,ctagname)
+						if ctag != None:
+							parenttagname = ctagname
+							parenttag = ctag
+							break
 					if local:
 						print('immediate parent '+str(cversion)+' for local version '+str(version)+' not found')
 						return (cversion,currentpackage,change.package)

@@ -31,6 +31,9 @@ import subprocess
 import argparse
 import collections
 import os
+import urllib.request
+import urllib.error
+import hashlib
 
 def versiontotag(version):
 	tag = str(version)
@@ -40,7 +43,7 @@ def versiontotag(version):
 	return tag
 
 parser = argparse.ArgumentParser(description="imports dsc pool into git repos")
-parser.add_argument("--snapshot", help="automatically retrive base versions from snapshot.debian.org, retrieved packages will be stored in the first dsc dir, retrivial will only be attempted if the source package names match", action="store_true")
+parser.add_argument("--snapshot", help="automatically retrive base versions and missing source package files from snapshot.debian.org, retrieved packages will be stored in the first dsc dir, retrivial will only be attempted if the source package names match", action="store_true")
 parser.add_argument("pool",help="pool to process")
 parser.add_argument("whitelist",help="package whitelist")
 parser.add_argument("localversionmarkers",help="markers used to identify local versions, seperated by dollar signs")
@@ -117,6 +120,13 @@ def tryfindcommit(githash):
 	except:
 		return None
 
+def findmostsecurespfiles(deb822):
+	if 'Checksums-Sha256' in deb822:
+		return deb822['Checksums-Sha256']
+	if 'Checksums-Sha1' in deb822:
+		return deb822['Checksums-Sha1']
+	return deb822['Files']
+
 #perform the actual dsc import
 #this may return
 #0 for success
@@ -140,17 +150,70 @@ def importdsc(version,tagname,repo):
 		f = open(filename,'rb')
 		dscusesdgit = False
 		sourcepackagename = ''
-		for line in f:
-			line = line.rstrip()
-			linesplit = line.split(b' ')
-			#print(repr(linesplit))
-			if (linesplit[0]==b'Dgit:'):
-				dscusesdgit = True
-				dscgitref = linesplit[1].decode('ascii')
-			if (linesplit[0]==b'Source:'):
-				sourcepackagename = linesplit[1].decode('ascii')
+		#for line in f:
+		#	line = line.rstrip()
+		#	linesplit = line.split(b' ')
+		#	#print(repr(linesplit))
+		#	if (linesplit[0]==b'Dgit:'):
+		#		dscusesdgit = True
+		#		dscgitref = linesplit[1].decode('ascii')
+		#	if (linesplit[0]==b'Source:'):
+		#		sourcepackagename = linesplit[1].decode('ascii')
+		dsc = Dsc(f)
 		f.close()
-		
+		#print(repr(dsc))
+		#sys.exit(1)
+		if 'Dgit' in dsc:
+			dscusesdgit = True
+			dscgitref = dsc['Dgit'].split(' ')[0]
+		sourcepackagename = dsc['Source']
+		files = findmostsecurespfiles(dsc)
+		#print(os.path.dirname(filename))
+		dscdir = os.path.dirname(filename)
+		for fileentry in files:
+			if not os.path.exists(dscdir+'/'+fileentry['name']):
+				if args.snapshot:
+					print("Can't find file "+fileentry['name'] +' attempting to download')
+					print(repr(fileentry))
+					sha1 = None
+					for sha1entry in dsc['Checksums-Sha1']:
+						if sha1entry['name'] == fileentry['name']:
+							sha1 = sha1entry['sha1']
+					if sha1 is None:
+						print("Can't find sha1 for "+fileentry['name'])
+						sys.exit(1)
+					print(sha1)
+					fileurl = 'http://snapshot.debian.org/file/' + sha1
+					with urllib.request.urlopen(fileurl) as response:
+						filedata = response.read()
+					if 'sha256' in fileentry:
+						hashalg = 'sha256'
+						m = hashlib.sha256()
+					elif 'sha1' in fileentry:
+						hashalg = 'sha1'
+						m = hashlib.sha1()
+					else:
+						hashalg = 'md5sum'
+						m = hashlib.md5()
+					#m = hashlib.sha256()
+					m.update(filedata)
+					filehash = fileentry[hashalg]
+					filesize = int(fileentry['size'])
+					hash = m.hexdigest();
+					if hash != filehash:
+						print("hash sum mismatch when downloading "+fileentry['name'])
+						sys.exit(6)
+					if (len(filedata) != filesize):
+						print("size mismatch when downloading "+fileentry['name'])
+						sys.exit(9)
+					f = open(dscdir+'/'+fileentry['name'],'wb')
+					f.write(filedata)
+					f.close
+					print("successfully downloaded "+fileentry['name'])
+				else:
+					print("Can't find file "+fileentry['name'])
+				print(sha1)
+
 		commit = None
 		if (dscusesdgit):
 			fetchsources = [('https://git.dgit.debian.org/'+sourcepackagename+'.git','debian/'),('https://git.dgit.debian.org/'+sourcepackagename+'.git','archive/debian/')]

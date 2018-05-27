@@ -443,7 +443,7 @@ if not (finalentry is None):
 				sys.exit(9)
 			f = open(filename,'wb')
 			f.write(filedata)
-			f.close
+			f.close()
 			print("successfully downloaded "+filename)
 		
 

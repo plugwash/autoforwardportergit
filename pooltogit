@@ -208,7 +208,7 @@ def importdsc(version,tagname,repo):
 						sys.exit(9)
 					f = open(dscdir+'/'+fileentry['name'],'wb')
 					f.write(filedata)
-					f.close
+					f.close()
 					print("successfully downloaded "+fileentry['name'])
 				else:
 					print("Can't find file "+fileentry['name'])

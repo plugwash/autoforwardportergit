@@ -74,6 +74,11 @@ work backwards through the changelog until it finds a version that it can use
 as the parent. If it doesn't find any then it will import the package with an
 orphan history.
 
+If the parent is found to be a version that is not yet imported but is in the
+list of packages to import (this can happen when packages are backported, 
+such that the parent has a higher version than the package being processed)
+then the parent version will be pushed to the start of the list.
+
 Pooltogit operates on a whitelist of packages. Unlike it's predecessor
 dscdirtogit it is able to follow history across package name changes.
 

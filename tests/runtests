@@ -11,12 +11,14 @@ tar -zcf test1_1.orig.tar.gz test1_1.orig
 tar -zcf test1_2.orig.tar.gz test1_2.orig
 dpkg-source -b test1_1-1
 dpkg-source -b test1_1-1+test1
+dpkg-source -b test1_1-1+test1~foo
 dpkg-source -b test1_2-1
 
 cd workingrepo
 reprepro includedsc test-staging ../test1_1-1+test1.dsc
 reprepro includedsc test ../test1_1-1+test1.dsc
 reprepro includedsc test-deb ../test1_2-1.dsc
+reprepro includedsc foo ../test1_1-1+test1~foo.dsc
 cd ..
 
 echo test1 > whitelist.import

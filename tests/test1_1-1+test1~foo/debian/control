@@ -1,0 +1,11 @@
+Source: test1
+Section: unknown
+Priority: optional
+Maintainer: plugwash <plugwash@afpgtest>
+Build-Depends: debhelper (>= 9)
+Standards-Version: 3.9.8
+
+Package: test1
+Architecture: all
+Depends: ${misc:Depends}
+Description: dummy package for autoforwardportergit testing.

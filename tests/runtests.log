@@ -18,8 +18,11 @@ rm -rf workingrepo/pool
 rm -rf workingrepo/db
 rm -rf git
 rm -rf tmp
+rm -rf output
+rm -f whitelist.*
 
 mkdir tmp
+mkdir output
 tar -zcf test1_1.orig.tar.gz test1_1.orig
 tar -zcf test1_2.orig.tar.gz test1_2.orig
 dpkg-source -b test1_1-1
@@ -32,6 +35,11 @@ dpkg-source: info: using source format '3.0 (quilt)'
 dpkg-source: info: building test1 using existing ./test1_1.orig.tar.gz
 dpkg-source: info: building test1 in test1_1-1+test1.debian.tar.xz
 dpkg-source: info: building test1 in test1_1-1+test1.dsc
+dpkg-source -b test1_1-1+test1~foo
+dpkg-source: info: using source format '3.0 (quilt)'
+dpkg-source: info: building test1 using existing ./test1_1.orig.tar.gz
+dpkg-source: info: building test1 in test1_1-1+test1~foo.debian.tar.xz
+dpkg-source: info: building test1 in test1_1-1+test1~foo.dsc
 dpkg-source -b test1_2-1
 dpkg-source: info: using source format '3.0 (quilt)'
 dpkg-source: info: building test1 using existing ./test1_2.orig.tar.gz
@@ -48,77 +56,68 @@ Exporting indices...
 reprepro includedsc test-deb ../test1_2-1.dsc
 Warning: strange section 'unknown'!
 Exporting indices...
+reprepro includedsc foo ../test1_1-1+test1~foo.dsc
+Warning: strange section 'unknown'!
+Exporting indices...
 cd ..
+
+echo test1 > whitelist.import
+echo test1 > whitelist.test
+
 #this first invocation should fail because base version is not found.
 ! ../dscdirtogitdriver test
 #!/bin/bash -ev
 set -o pipefail
 SCRIPTDIR=`dirname $(readlink -f $0)`
-source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail)
-$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail
-using autoforwardportergit config directory /home/plugwash/autoforwardportergit/tests
-reading config entry workingrepo from section main
-reading config entry gitdir from section main
-reading config entry tmp from section main
-reading config entry AFPGCONFIG from section main
-reading config entry localmarker from section main
-reading config entry revertmarker from section main
-reading config entry importname from section main
-reading config entry importemail from section main
-workingrepo='/home/plugwash/autoforwardportergit/tests/workingrepo'
-gitdir='/home/plugwash/autoforwardportergit/tests/git'
-tmp='/home/plugwash/autoforwardportergit/tests/tmp'
-AFPGCONFIG='/home/plugwash/autoforwardportergit/tests'
+source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail main:dscdirtogitargs)
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail main:dscdirtogitargs
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+AFPGCONFIG='/build/autoforwardportergit/tests'
 localmarker='+test'
 revertmarker='+zrvt'
 importname='Autoforwardporter test git importer'
 importemail='fake@fake'
-$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail
-using autoforwardportergit config directory /home/plugwash/autoforwardportergit/tests
-reading config entry workingrepo from section main
-reading config entry gitdir from section main
-reading config entry tmp from section main
-reading config entry AFPGCONFIG from section main
-reading config entry localmarker from section main
-reading config entry revertmarker from section main
-reading config entry importname from section main
-reading config entry importemail from section main
-workingrepo='/home/plugwash/autoforwardportergit/tests/workingrepo'
-gitdir='/home/plugwash/autoforwardportergit/tests/git'
-tmp='/home/plugwash/autoforwardportergit/tests/tmp'
-AFPGCONFIG='/home/plugwash/autoforwardportergit/tests'
+dscdirtogitargs=''
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail main:dscdirtogitargs
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+AFPGCONFIG='/build/autoforwardportergit/tests'
 localmarker='+test'
 revertmarker='+zrvt'
 importname='Autoforwardporter test git importer'
 importemail='fake@fake'
+dscdirtogitargs=''
 
-for PACKAGE in $(cat $AFPGCONFIG/whitelist.import) ; do
-    #| grep -v glibc
-    if [[ $PACKAGE == lib* ]]; then
-        PACKAGEDIR=${PACKAGE:0:4}/$PACKAGE
-    else
-        PACKAGEDIR=${PACKAGE:0:1}/$PACKAGE
-    fi
-
-    mkdir -p ${gitdir}/$PACKAGEDIR
-    #echo changing to ${gitdir}/$PACKAGEDIR
-    cd ${gitdir}/$PACKAGEDIR
-    if [ ! -d .git ]; then
-        git init
-    fi
-    git config --local user.name "$importname"
-    git config --local user.email "$importemail"
-    echo ${SCRIPTDIR}/dscdirtogit $workingrepo/pool/*/$PACKAGEDIR $localmarker'$'$revertmarker
-    ${SCRIPTDIR}/dscdirtogit $workingrepo/pool/*/$PACKAGEDIR $localmarker'$'$revertmarker 
-done
-Initialized empty Git repository in /home/plugwash/autoforwardportergit/tests/git/t/test1/.git/
-/home/plugwash/autoforwardportergit/dscdirtogit /home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1 +test$+zrvt
-/home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.dsc
+mkdir -p ${gitdir}
+cd ${gitdir}
+${SCRIPTDIR}/pooltogit $dscdirtogitargs $workingrepo/pool/ $AFPGCONFIG/whitelist.import $localmarker'$'$revertmarker
+Initialized empty Git repository in /build/autoforwardportergit/tests/git/t/test1/.git/
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_2-1.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1~foo.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1~foo.dsc
+1-1+test1~foo
+starting import process for 1-1+test1~foo tag name 1-1+test1_foo
+['git', 'checkout', '-q', '--detach']
+fatal: You are on a branch yet to be born
+dpkg-source: warning: extracting unsigned source package (/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1~foo.dsc)
+dpkg-source: info: extracting test1 in extract
+dpkg-source: info: unpacking test1_1.orig.tar.gz
+dpkg-source: info: unpacking test1_1-1+test1~foo.debian.tar.xz
+dpkg-source: info: applying test1.patch
+ignoring error, probablly a newly created repo
+package depends on earlier known version 1-1+test1
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.dsc
 1-1+test1
 starting import process for 1-1+test1 tag name 1-1+test1
 ['git', 'checkout', '-q', '--detach']
 fatal: You are on a branch yet to be born
-dpkg-source: warning: extracting unsigned source package (/home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.dsc)
+dpkg-source: warning: extracting unsigned source package (/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.dsc)
 dpkg-source: info: extracting test1 in extract
 dpkg-source: info: unpacking test1_1.orig.tar.gz
 dpkg-source: info: unpacking test1_1-1+test1.debian.tar.xz
@@ -134,80 +133,53 @@ dcmd cp -a test1_1-1.dsc workingrepo/pool/main/t/test1
 #!/bin/bash -ev
 set -o pipefail
 SCRIPTDIR=`dirname $(readlink -f $0)`
-source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail)
-$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail
-using autoforwardportergit config directory /home/plugwash/autoforwardportergit/tests
-reading config entry workingrepo from section main
-reading config entry gitdir from section main
-reading config entry tmp from section main
-reading config entry AFPGCONFIG from section main
-reading config entry localmarker from section main
-reading config entry revertmarker from section main
-reading config entry importname from section main
-reading config entry importemail from section main
-workingrepo='/home/plugwash/autoforwardportergit/tests/workingrepo'
-gitdir='/home/plugwash/autoforwardportergit/tests/git'
-tmp='/home/plugwash/autoforwardportergit/tests/tmp'
-AFPGCONFIG='/home/plugwash/autoforwardportergit/tests'
+source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail main:dscdirtogitargs)
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail main:dscdirtogitargs
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+AFPGCONFIG='/build/autoforwardportergit/tests'
 localmarker='+test'
 revertmarker='+zrvt'
 importname='Autoforwardporter test git importer'
 importemail='fake@fake'
-$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail
-using autoforwardportergit config directory /home/plugwash/autoforwardportergit/tests
-reading config entry workingrepo from section main
-reading config entry gitdir from section main
-reading config entry tmp from section main
-reading config entry AFPGCONFIG from section main
-reading config entry localmarker from section main
-reading config entry revertmarker from section main
-reading config entry importname from section main
-reading config entry importemail from section main
-workingrepo='/home/plugwash/autoforwardportergit/tests/workingrepo'
-gitdir='/home/plugwash/autoforwardportergit/tests/git'
-tmp='/home/plugwash/autoforwardportergit/tests/tmp'
-AFPGCONFIG='/home/plugwash/autoforwardportergit/tests'
+dscdirtogitargs=''
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail main:dscdirtogitargs
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+AFPGCONFIG='/build/autoforwardportergit/tests'
 localmarker='+test'
 revertmarker='+zrvt'
 importname='Autoforwardporter test git importer'
 importemail='fake@fake'
+dscdirtogitargs=''
 
-for PACKAGE in $(cat $AFPGCONFIG/whitelist.import) ; do
-    #| grep -v glibc
-    if [[ $PACKAGE == lib* ]]; then
-        PACKAGEDIR=${PACKAGE:0:4}/$PACKAGE
-    else
-        PACKAGEDIR=${PACKAGE:0:1}/$PACKAGE
-    fi
-
-    mkdir -p ${gitdir}/$PACKAGEDIR
-    #echo changing to ${gitdir}/$PACKAGEDIR
-    cd ${gitdir}/$PACKAGEDIR
-    if [ ! -d .git ]; then
-        git init
-    fi
-    git config --local user.name "$importname"
-    git config --local user.email "$importemail"
-    echo ${SCRIPTDIR}/dscdirtogit $workingrepo/pool/*/$PACKAGEDIR $localmarker'$'$revertmarker
-    ${SCRIPTDIR}/dscdirtogit $workingrepo/pool/*/$PACKAGEDIR $localmarker'$'$revertmarker 
-done
-/home/plugwash/autoforwardportergit/dscdirtogit /home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1 +test$+zrvt
-/home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1.dsc
+mkdir -p ${gitdir}
+cd ${gitdir}
+${SCRIPTDIR}/pooltogit $dscdirtogitargs $workingrepo/pool/ $AFPGCONFIG/whitelist.import $localmarker'$'$revertmarker
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_2-1.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1~foo.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1.dsc
 1-1
 starting import process for 1-1 tag name 1-1
 ['git', 'checkout', '-q', '--detach']
 fatal: You are on a branch yet to be born
-dpkg-source: warning: extracting unsigned source package (/home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1.dsc)
+dpkg-source: warning: extracting unsigned source package (/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1.dsc)
 dpkg-source: info: extracting test1 in extract
 dpkg-source: info: unpacking test1_1.orig.tar.gz
 dpkg-source: info: unpacking test1_1-1.debian.tar.xz
 ignoring error, probablly a newly created repo
 
-['dgit', 'import-dsc', '/home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1.dsc', '+workingbranch']
+['dgit', 'import-dsc', '/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1.dsc', '+workingbranch']
 dgit: warning: importing unsigned .dsc
 Dgit metadata in .dsc: NO git hash
-made symlink ../test1_1.orig.tar.gz -> /home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1.orig.tar.gz
-made symlink ../test1_1-1.debian.tar.xz -> /home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1.debian.tar.xz
+made symlink ../test1_1.orig.tar.gz -> /build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1.orig.tar.gz
+made symlink ../test1_1-1.debian.tar.xz -> /build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1.debian.tar.xz
 using existing test1_1.orig.tar.gz
 using existing test1_1-1.debian.tar.xz
 dpkg-source: warning: extracting unsigned source package (test1.dsc)
@@ -216,12 +188,24 @@ dpkg-source: info: unpacking test1_1.orig.tar.gz
 dpkg-source: info: unpacking test1_1-1.debian.tar.xz
 synthesised git commit from .dsc 1-1
 dgit: import-dsc: results are in in git ref refs/heads/workingbranch
-/home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1~foo.dsc
+1-1+test1~foo
+starting import process for 1-1+test1~foo tag name 1-1+test1_foo
+['git', 'checkout', '-q', '--detach']
+fatal: You are on a branch yet to be born
+dpkg-source: warning: extracting unsigned source package (/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1~foo.dsc)
+dpkg-source: info: extracting test1 in extract
+dpkg-source: info: unpacking test1_1.orig.tar.gz
+dpkg-source: info: unpacking test1_1-1+test1~foo.debian.tar.xz
+dpkg-source: info: applying test1.patch
+ignoring error, probablly a newly created repo
+package depends on earlier known version 1-1+test1
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.dsc
 1-1+test1
 starting import process for 1-1+test1 tag name 1-1+test1
 ['git', 'checkout', '-q', '--detach']
 fatal: You are on a branch yet to be born
-dpkg-source: warning: extracting unsigned source package (/home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.dsc)
+dpkg-source: warning: extracting unsigned source package (/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.dsc)
 dpkg-source: info: extracting test1 in extract
 dpkg-source: info: unpacking test1_1.orig.tar.gz
 dpkg-source: info: unpacking test1_1-1+test1.debian.tar.xz
@@ -229,10 +213,10 @@ dpkg-source: info: applying test1.patch
 ignoring error, probablly a newly created repo
 1-1
 ['git', 'branch', '-f', 'workingbranch', '1-1']
-['dgit', 'import-dsc', '/home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.dsc', '..workingbranch']
+['dgit', 'import-dsc', '/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.dsc', '..workingbranch']
 dgit: warning: importing unsigned .dsc
 Dgit metadata in .dsc: NO git hash
-made symlink ../test1_1-1+test1.debian.tar.xz -> /home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.debian.tar.xz
+made symlink ../test1_1-1+test1.debian.tar.xz -> /build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.debian.tar.xz
 using existing test1_1.orig.tar.gz
 using existing test1_1-1+test1.debian.tar.xz
 dpkg-source: warning: extracting unsigned source package (test1.dsc)
@@ -242,22 +226,50 @@ dpkg-source: info: unpacking test1_1-1+test1.debian.tar.xz
 synthesised git commit from .dsc 1-1+test1
 Import, merging.
 dgit: import-dsc: results are in in git ref refs/heads/workingbranch
-/home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_2-1.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1~foo.dsc
+1-1+test1~foo
+starting import process for 1-1+test1~foo tag name 1-1+test1_foo
+['git', 'checkout', '-q', '--detach']
+fatal: You are on a branch yet to be born
+dpkg-source: warning: extracting unsigned source package (/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1~foo.dsc)
+dpkg-source: info: extracting test1 in extract
+dpkg-source: info: unpacking test1_1.orig.tar.gz
+dpkg-source: info: unpacking test1_1-1+test1~foo.debian.tar.xz
+dpkg-source: info: applying test1.patch
+ignoring error, probablly a newly created repo
+1-1+test1
+['git', 'branch', '-f', 'workingbranch', '1-1+test1']
+['dgit', 'import-dsc', '/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1~foo.dsc', '..workingbranch']
+dgit: warning: importing unsigned .dsc
+Dgit metadata in .dsc: NO git hash
+made symlink ../test1_1-1+test1~foo.debian.tar.xz -> /build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1~foo.debian.tar.xz
+using existing test1_1.orig.tar.gz
+using existing test1_1-1+test1~foo.debian.tar.xz
+dpkg-source: warning: extracting unsigned source package (test1.dsc)
+dpkg-source: info: extracting test1 in test1-1
+dpkg-source: info: unpacking test1_1.orig.tar.gz
+dpkg-source: info: unpacking test1_1-1+test1~foo.debian.tar.xz
+synthesised git commit from .dsc 1-1+test1~foo
+Import, merging.
+dgit: import-dsc: results are in in git ref refs/heads/workingbranch
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.dsc
+1-1+test1
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_2-1.dsc
 2-1
 starting import process for 2-1 tag name 2-1
 ['git', 'checkout', '-q', '--detach']
 fatal: You are on a branch yet to be born
-dpkg-source: warning: extracting unsigned source package (/home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_2-1.dsc)
+dpkg-source: warning: extracting unsigned source package (/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_2-1.dsc)
 dpkg-source: info: extracting test1 in extract
 dpkg-source: info: unpacking test1_2.orig.tar.gz
 dpkg-source: info: unpacking test1_2-1.debian.tar.xz
 ignoring error, probablly a newly created repo
 
-['dgit', 'import-dsc', '/home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_2-1.dsc', '+workingbranch']
+['dgit', 'import-dsc', '/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_2-1.dsc', '+workingbranch']
 dgit: warning: importing unsigned .dsc
 Dgit metadata in .dsc: NO git hash
-made symlink ../test1_2.orig.tar.gz -> /home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_2.orig.tar.gz
-made symlink ../test1_2-1.debian.tar.xz -> /home/plugwash/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_2-1.debian.tar.xz
+made symlink ../test1_2.orig.tar.gz -> /build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_2.orig.tar.gz
+made symlink ../test1_2-1.debian.tar.xz -> /build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_2-1.debian.tar.xz
 using existing test1_2.orig.tar.gz
 using existing test1_2-1.debian.tar.xz
 dpkg-source: warning: extracting unsigned source package (test1.dsc)
@@ -268,141 +280,33 @@ synthesised git commit from .dsc 2-1
 Import, forced update - synthetic orphan git history.
 dgit: import-dsc: results are in in git ref refs/heads/workingbranch
 
+#for PACKAGE in $(cat $AFPGCONFIG/whitelist.import) ; do
+#    #| grep -v glibc
+#    if [[ $PACKAGE == lib* ]]; then
+#        PACKAGEDIR=${PACKAGE:0:4}/$PACKAGE
+#    else
+#        PACKAGEDIR=${PACKAGE:0:1}/$PACKAGE
+#    fi
+#
+#    mkdir -p ${gitdir}/$PACKAGEDIR
+#    #echo changing to ${gitdir}/$PACKAGEDIR
+#    cd ${gitdir}/$PACKAGEDIR
+#    if [ ! -d .git ]; then
+#        git init
+#    fi
+#    git config --local user.name "$importname"
+#    git config --local user.email "$importemail"
+#    echo ${SCRIPTDIR}/dscdirtogit $dscdirtogitargs $workingrepo/pool/*/$PACKAGEDIR $localmarker'$'$revertmarker
+#    ${SCRIPTDIR}/dscdirtogit $dscdirtogitargs $workingrepo/pool/*/$PACKAGEDIR $localmarker'$'$revertmarker 
+#done
+
+#test branchpointer
 ../branchpointer test
-#!/bin/bash -ev
-set -o pipefail
-#Copyright (c) 2009-2014 Peter M. Green and Adam D. Barratt
-#
-#Permission is hereby granted, free of charge, to any person obtaining a copy of
-#this software and associated documentation files (the "Software"), to deal in
-#the Software without restriction, including without limitation the rights to
-#use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-#of the Software, and to permit persons to whom the Software is furnished to do
-#so, subject to the following conditions:
-#
-#The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-#
-#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-#THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#SOFTWARE.
-
-
-#based on code by adsb from 
-#http://anonscm.debian.org/gitweb/?p=mirror/britney1.git;a=blob_plain;f=britney;h=094ec121d5bea3e68af76c493f2b9d91d734f45e;hb=HEAD
-#I don't pretend to understand this perl code
-process_pkg_list() {
-  perl "-MAptPkg::Config '\$_config'" -e '
-    my $versioning = $_config->system->versioning;
-
-    while (<>) {
-      $current .= $_;
-
-      if (/^Package: (.*)$/) {
-        $pkg = $1;
-      } elsif (/^Version: (.*)$/) {
-        $version = $1;
-      } elsif (/^\s*$/) {
-        $data{"$pkg"}{"$version"} = $current;
-        $pkg = ""; $version = ""; $current = "";
-      }
-    }
-
-    $data{"$pkg"}{"$version"} = $current if length $current;
-
-    for $pkg2 (sort keys %data) {
-      @versions = (reverse sort {$versioning->compare($a,$b)} keys %{$data{"$pkg2"}});
-      print "$pkg2 $versions[0]\n";
-    }
-  '
-}
-
-set -o pipefail
-
-
-MAINSUITE=$1
-
-SCRIPTDIR=`dirname $(readlink -f $0)`
-source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE)
-$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE
-using autoforwardportergit config directory /home/plugwash/autoforwardportergit/tests
-reading config entry workingrepo from section main
-reading config entry gitdir from section main
-reading config entry tmp from section main
-reading config entry AFPGCONFIG from section main
-reading config entry STAGINGSUITE from section test
-reading config entry UPSTREAMSUITE from section test
-workingrepo='/home/plugwash/autoforwardportergit/tests/workingrepo'
-gitdir='/home/plugwash/autoforwardportergit/tests/git'
-tmp='/home/plugwash/autoforwardportergit/tests/tmp'
-AFPGCONFIG='/home/plugwash/autoforwardportergit/tests'
-STAGINGSUITE='test-staging'
-UPSTREAMSUITE='test-deb'
-$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE
-using autoforwardportergit config directory /home/plugwash/autoforwardportergit/tests
-reading config entry workingrepo from section main
-reading config entry gitdir from section main
-reading config entry tmp from section main
-reading config entry AFPGCONFIG from section main
-reading config entry STAGINGSUITE from section test
-reading config entry UPSTREAMSUITE from section test
-workingrepo='/home/plugwash/autoforwardportergit/tests/workingrepo'
-gitdir='/home/plugwash/autoforwardportergit/tests/git'
-tmp='/home/plugwash/autoforwardportergit/tests/tmp'
-AFPGCONFIG='/home/plugwash/autoforwardportergit/tests'
-STAGINGSUITE='test-staging'
-UPSTREAMSUITE='test-deb'
-
-cd $workingrepo
-
-for SUITE in ${MAINSUITE} ${STAGINGSUITE} ${UPSTREAMSUITE} ; do
-    sources=$workingrepo/dists/${SUITE}/*/source/Sources
-    cat $sources | process_pkg_list > ${tmp}/sources-${SUITE}-processed
-done
-
-for PACKAGE in $(cat $AFPGCONFIG/whitelist.import) ; do
-    echo ${PACKAGE}
-    MAINVERSION=`grep ^${PACKAGE}" " ${tmp}/sources-${MAINSUITE}-processed | cut -d " " -f 2` || true
-    STAGINGVERSION=`grep ^${PACKAGE}" " ${tmp}/sources-${STAGINGSUITE}-processed | cut -d " " -f 2` || true
-    DEBVERSION=`grep ^${PACKAGE}" " ${tmp}/sources-${UPSTREAMSUITE}-processed | cut -d " " -f 2` || true
-    echo ${PACKAGE}
-    echo main version $MAINVERSION
-    echo staging version $STAGINGVERSION
-    echo deb version $DEBVERSION
-
-    if [[ $PACKAGE == lib* ]]; then
-        PACKAGEDIR=${PACKAGE:0:4}/$PACKAGE
-    else
-        PACKAGEDIR=${PACKAGE:0:1}/$PACKAGE
-    fi
-
-    cd $gitdir/$PACKAGEDIR
-    git checkout -q --detach || true
-    if [[ !  -z  $MAINVERSION ]]; then
-        MAINTAG=$($SCRIPTDIR/versiontotag $MAINVERSION)
-        git branch -f ${MAINSUITE} $MAINTAG 
-    fi
-
-    if [[ !  -z  $STAGINGVERSION ]]; then
-        STAGINGTAG=$($SCRIPTDIR/versiontotag $STAGINGVERSION)
-        git branch -f ${STAGINGSUITE} $STAGINGTAG
-    fi
-
-    if [[ !  -z  $DEBVERSION ]]; then
-        DEBTAG=$($SCRIPTDIR/versiontotag $DEBVERSION)
-        git branch -f ${UPSTREAMSUITE} $DEBTAG 
-    fi
-
-done
-test1
-test1
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+'test1'
 main version 1-1+test1
 staging version 1-1+test1
 deb version 2-1
-fatal: You are on a branch yet to be born
 
 #now lets try some actual forward porting
 ../forwardportdriver test
@@ -457,21 +361,1594 @@ process_pkg_list() {
 
 set -o pipefail
 
+MAINSUITE=$1
+
 SCRIPTDIR=`dirname $(readlink -f $0)`
-$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE $MAINSUITE:WORKINGBRANCH main:outputdir main:AFPGCONFIG main:localmarker main:revertmarker | . /dev/stdin
-using autoforwardportergit config directory /home/plugwash/autoforwardportergit/tests
-reading config entry workingrepo from section main
-reading config entry gitdir from section main
-reading config entry tmp from section main
-reading config entry STAGINGSUITE from section 
-Traceback (most recent call last):
-  File "/home/plugwash/autoforwardportergit/afpg_readconfig.py", line 40, in <module>
-    print(item+"='"+readconfigentry(section,item)+"'")
-  File "/home/plugwash/autoforwardportergit/afpg_readconfig.py", line 28, in readconfigentry
-    value = config[section][item];
-  File "/usr/lib/python3.5/configparser.py", line 956, in __getitem__
-    raise KeyError(key)
-KeyError: ''
-workingrepo='/home/plugwash/autoforwardportergit/tests/workingrepo'
-gitdir='/home/plugwash/autoforwardportergit/tests/git'
-tmp='/home/plugwash/autoforwardportergit/tests/tmp'
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE $MAINSUITE:WORKINGBRANCH main:outputdir main:AFPGCONFIG main:localmarker main:revertmarker
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+STAGINGSUITE='test-staging'
+UPSTREAMSUITE='test-deb'
+WORKINGBRANCH='test-working'
+outputdir='/build/autoforwardportergit/tests/output'
+AFPGCONFIG='/build/autoforwardportergit/tests'
+localmarker='+test'
+revertmarker='+zrvt'
+source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE $MAINSUITE:WORKINGBRANCH main:outputdir main:AFPGCONFIG main:localmarker main:revertmarker)
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE $MAINSUITE:WORKINGBRANCH main:outputdir main:AFPGCONFIG main:localmarker main:revertmarker
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+STAGINGSUITE='test-staging'
+UPSTREAMSUITE='test-deb'
+WORKINGBRANCH='test-working'
+outputdir='/build/autoforwardportergit/tests/output'
+AFPGCONFIG='/build/autoforwardportergit/tests'
+localmarker='+test'
+revertmarker='+zrvt'
+
+#update working repo
+cd $workingrepo
+
+for SUITE in ${MAINSUITE} ${STAGINGSUITE} ${UPSTREAMSUITE} ; do
+    sources=$workingrepo/dists/${SUITE}/main/source/Sources
+    cat $sources | process_pkg_list > $tmp/sources-${SUITE}-processed
+done
+
+for PACKAGE in $(cat $AFPGCONFIG/whitelist.${MAINSUITE}) ; do
+    echo ${PACKAGE}
+    MAINVERSION=`grep ^${PACKAGE}" " $tmp/sources-${MAINSUITE}-processed | cut -d " " -f 2`
+    STAGINGVERSION=`grep ^${PACKAGE}" " $tmp/sources-${STAGINGSUITE}-processed | cut -d " " -f 2`
+    DEBVERSION=`grep ^${PACKAGE}" " $tmp/sources-${UPSTREAMSUITE}-processed | cut -d " " -f 2`
+    echo ${PACKAGE}
+    echo main version $MAINVERSION
+    echo staging version $STAGINGVERSION
+    echo deb version $DEBVERSION
+    if [[ $STAGINGVERSION == *${localmarker}* ]] ; then
+	NEWVERSION=${DEBVERSION}${localmarker}1
+	OLDVERSION=${STAGINGVERSION}
+    elif [[ $MAINVERSION == *${localmarker}* ]] ; then
+	NEWVERSION=${DEBVERSION}${localmarker}1
+	OLDVERSION=${MAINVERSION}
+    elif [[ $STAGINGVERSION == *${revertmarker}* ]] ; then
+	if dpkg --compare-versions $STAGINGVERSION lt $DEBVERSION ; then
+	    echo no need to forward port rvt version as debian version is higher
+	    continue
+	fi
+	NEWVERSION=${DEBVERSION}${revertmarker}
+	OLDVERSION=${STAGINGVERSION}
+    else
+	echo no ${localmarker} version marker found in main version or staging version
+	echo and no ${revertmarker} marker found in staging version.
+	continue
+    fi
+    MAINBASEVERSION=`echo $MAINVERSION | sed "s/${localmarker}[0-9]*//" | sed "s/${revertmarker}[0-9]*//"`
+    STAGINGBASEVERSION=`echo $STAGINGVERSION | sed "s/${localmarker}[0-9]*//" | sed "s/${revertmarker}[0-9]*//"`
+    if dpkg --compare-versions $MAINBASEVERSION lt $DEBVERSION && dpkg --compare-versions $STAGINGBASEVERSION le $DEBVERSION; then
+	echo version ordering looks ok for forward porting
+	
+
+	if dpkg --compare-versions $NEWVERSION lt $STAGINGVERSION;then
+	    #sometimes Debian uses a version suffix that makes their new version
+	    #with our suffix on the end lower than our old version, we need
+	    #to take care of that.
+	    
+	    #there may be some escaping issues in this code, needs testing.
+	    echo "$localmarker" | sed 's/+/\\+/g'
+	    localmarkerescaped="$(echo "$localmarker" | sed 's/+/\\+/g')"
+	    revertmarkerescaped="$(echo "$revertmarker" | sed 's/+/\\+/g')"
+	    STAGINGPREMARKERVERSION=`echo $STAGINGVERSION | sed "s/${localmarker}[0-9]*.*//" | sed "s/${revertmarker}[0-9]*.*//"`
+	    echo 1 "$localmarkerescaped"
+	    echo 2 "$revertmarkerescaped"
+	    STAGINGVERSIONMARKER=`echo $STAGINGVERSION | grep -Eo "(${localmarkerescaped}|${revertmarkerescaped})[0-9]*"`
+	    STAGINGVERSIONUPTOANDINCLUDINGMARKER="${STAGINGPREMARKERVERSION}${STAGINGVERSIONMARKER}"
+	    NEWDEBSUFFIX=${DEBVERSION:${#STAGINGPREMARKERVERSION}}
+	    NEWVERSION=${STAGINGVERSIONUPTOANDINCLUDINGMARKER}${NEWDEBSUFFIX}
+	fi
+	if dpkg --compare-versions $NEWVERSION lt $STAGINGVERSION;then	
+	    echo ERROR: WTF: something really strange is going on with version numbers
+	    echo staging version: $STAGINGVERSION
+	    echo new version: $NEWVERSION
+	    exit 1
+	fi
+
+	NEWVERSIONNOEPOCH=`echo ${NEWVERSION} | sed -e s/^[^:]://`
+	if [ ! -e $outputdir/${PACKAGE}_${NEWVERSIONNOEPOCH}.log ] ; then
+	    ($SCRIPTDIR/makeforwardport $PACKAGE $OLDVERSION $DEBVERSION $NEWVERSION $STAGINGSUITE $WORKINGBRANCH || true) 2>&1 | tee $outputdir/${PACKAGE}_${NEWVERSIONNOEPOCH}.log
+	fi
+    fi
+
+done
+test1
+test1
+main version 1-1+test1
+staging version 1-1+test1
+deb version 2-1
+version ordering looks ok for forward porting
+#!/bin/bash -ev
+set -o pipefail
+SCRIPTDIR=`dirname $(readlink -f $0)`
+echo makeforwardport starting command: makeforwardport $1 $2 $3 $4 $5 $6
+makeforwardport starting command: makeforwardport test1 1-1+test1 2-1 2-1+test1 test-staging test-working
+PACKAGE=$1
+OLDVERSION=$2
+DEBVERSION=$3
+NEWVERSION=$4
+TARGETSUITE=$5
+BRANCHNAME=$6
+source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:forwardportname main:forwardportemail main:outputdir main:dosbuild main:dodgitpush)
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:forwardportname main:forwardportemail main:outputdir main:dosbuild main:dodgitpush
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+AFPGCONFIG='/build/autoforwardportergit/tests'
+localmarker='+test'
+revertmarker='+zrvt'
+forwardportname='Autoforwardporter test git importer'
+forwardportemail='fake@fake'
+outputdir='/build/autoforwardportergit/tests/output'
+dosbuild='no'
+dodgitpush='no'
+$SCRIPTDIR/afpg_readconfig.py          main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:forwardportname main:forwardportemail main:outputdir main:dosbuild main:dodgitpush
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+AFPGCONFIG='/build/autoforwardportergit/tests'
+localmarker='+test'
+revertmarker='+zrvt'
+forwardportname='Autoforwardporter test git importer'
+forwardportemail='fake@fake'
+outputdir='/build/autoforwardportergit/tests/output'
+dosbuild='no'
+dodgitpush='no'
+
+
+NEWVERSIONNOEPOCH=`echo ${NEWVERSION} | sed -e s/^[^:]://`
+OLDVERSIONNOEPOCH=`echo ${OLDVERSION} | sed -e s/^[^:]://`
+DEBVERSIONNOEPOCH=`echo ${DEBVERSION} | sed -e s/^[^:]://`
+
+NEWTAG=`$SCRIPTDIR/versiontotag ${NEWVERSION}`
+OLDTAG=`$SCRIPTDIR/versiontotag ${OLDVERSION}`
+DEBTAG=`$SCRIPTDIR/versiontotag ${DEBVERSION}`
+
+if [[ $PACKAGE == lib* ]]; then
+    PACKAGEDIR=${PACKAGE:0:4}/$PACKAGE
+else
+    PACKAGEDIR=${PACKAGE:0:1}/$PACKAGE
+fi
+
+cd $tmp
+
+rm -rf makeforwardport
+mkdir makeforwardport
+cd makeforwardport
+git clone $gitdir/${PACKAGEDIR} tempgit
+Cloning into 'tempgit'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout.
+
+cd tempgit
+dgit setup-gitattributes
+git config --local user.name "Raspbian forward pporter"
+git config --local user.email root@raspbian.org
+#make sure there is no current branch
+git checkout -q --detach || true
+fatal: You are on a branch yet to be born
+
+git show ${OLDTAG}:debian/changelog > ../c1
+BASEVERSION=`$SCRIPTDIR/findchangelogunmarkedversion ../c1 $localmarker'$'$revertmarker`
+BASETAG=`$SCRIPTDIR/versiontotag ${BASEVERSION}`
+
+git branch -f debpsuedomerge $DEBTAG
+git checkout debpsuedomerge
+Switched to branch 'debpsuedomerge'
+echo git merge -s ours --ff $BASETAG
+git merge -s ours --ff 1-1
+git merge -s ours --ff -m 'pseudomerge to tie together broken upstream history' --allow-unrelated-histories $BASETAG
+Merge made by the 'ours' strategy.
+
+git branch -f $BRANCHNAME $OLDTAG
+git checkout $BRANCHNAME
+Switched to branch 'test-working'
+git config merge.conflictstyle diff3
+git merge debpsuedomerge || true #when a merge has conflicts git exits with a nonzero status code
+Auto-merging debian/changelog
+CONFLICT (content): Merge conflict in debian/changelog
+Automatic merge failed; fix conflicts and then commit the result.
+git diff --name-only --diff-filter=U > ../conflicts
+$SCRIPTDIR/fixupchangelog debian/changelog $NEWVERSION $TARGETSUITE "`date -uR`" $PACKAGE
+/usr/lib/python3/dist-packages/debian/changelog.py:275: UserWarning: Found eof where expected start of change data
+  warnings.warn(message)
+git add debian/changelog
+if grep ^debian/patches/series$ ../conflicts ; then
+	if grep '^<<<<<<< ' debian/patches/series ; then
+		$SCRIPTDIR/fixupseries debian/patches/series
+		git add debian/patches/series
+	else
+		#debian/patches/series is marked as conflicting but no conflict markers
+		#assume this means that upstream distribution no longer ships a
+		#debian/patches/series file.
+		git diff $BASETAG $OLDTAG | filterdiff -p1 -i debian/patches/series | egrep '^\+[^+]' | cut -c 2- > debian/patches/series
+		git add debian/patches/series
+	fi
+fi
+(if grep ^debian/control.md5sum$ ../conflicts ; then
+	#"kernel style" package,
+	(debian/rules clean || true) && debian/rules clean && git add debian/control.md5sum debian/control
+	if [ -f debian/config.defines.dump ]; then git add debian/config.defines.dump ; fi
+	if [ -f debian/rules.gen ]; then git add debian/rules.gen ; fi
+	if [ -f debian/tests/control ]; then git add debian/tests/control ; fi
+fi) || true
+
+if grep ^debian/control$ ../conflicts ; then
+	($SCRIPTDIR/fixupcontrol debian/control .. && git add debian/control) || true
+fi
+
+if grep ^debian/control.in$ ../conflicts ; then
+	($SCRIPTDIR/fixupcontrol debian/control.in .. && git add debian/control.in) || true
+fi
+
+if egrep '^debian/.*\.symbols$' ../conflicts ; then
+	echo conflicting symbols file found
+	for FILE in `egrep '^debian/.*\.symbols$' ../conflicts` ; do
+		($SCRIPTDIR/fixupsymbols $FILE .. && git add $FILE) || true
+	done
+	#($SCRIPTDIR/fixupcontrol debian/control .. && git add debian/control) || true
+fi
+
+
+#make sure no branch is checked out in our destination repo so that the push doesn't fail
+cd $gitdir/${PACKAGEDIR}
+git checkout -q --detach || true
+fatal: You are on a branch yet to be born
+cd $tmp/makeforwardport/tempgit
+git push -f origin $BRANCHNAME
+To /build/autoforwardportergit/tests/git/t/test1
+ * [new branch]      test-working -> test-working
+
+if ! git commit -m "Merge version $OLDVERSION and $DEBVERSION to produce $NEWVERSION" ; then
+    #push work in progress so it can be worked on manually
+    git diff --name-only --diff-filter=U > ../conflicts
+    echo conflicts found | cat - ../conflicts debian/changelog | sponge debian/changelog
+    git add debian/changelog
+    cat ../conflicts | while read CONFLICT; do
+        echo git add "$CONFLICT"
+        git add "$CONFLICT"
+    done
+    git commit -m "Failed merge of version $OLDVERSION and $DEBVERSION to produce $NEWVERSION, see list of conflicting files at the top of debian/changelog"
+    git push -f origin $BRANCHNAME
+    exit 1
+fi
+[test-working 2f8fdef] Merge version 1-1+test1 and 2-1 to produce 2-1+test1
+
+#defuzz patches (not yet ported to git)
+#cd ..
+#rm -rf extract.defuzz
+#cp -a extract extract.defuzz
+#cd extract.defuzz
+#export QUILT_PATCHES=debian/patches
+#quilt push -a --fuzz 0 || true
+#while quilt push; do
+#	quilt refresh
+#	quilt push -a --fuzz 0 || true
+#done
+#cd ../extract
+#rm -rf debian/patches
+#mv ../extract.defuzz/debian/patches debian/ || true
+#rm -rf ../extract.defuzz
+
+
+git push -f origin $BRANCHNAME
+To /build/autoforwardportergit/tests/git/t/test1
+   5fdd43a..2f8fdef  test-working -> test-working
+dcmd --orig cp $workingrepo/pool/*/$PACKAGEDIR/${PACKAGE}_${DEBVERSIONNOEPOCH}.dsc ..
+git status
+On branch test-working
+nothing to commit, working tree clean
+
+#quilt fixup code, try dgit first if that fails it's time to be more
+#aggressive.
+if ! dgit -wgf --quilt=auto quilt-fixup; then
+    cd ..
+    dpkg-source --skip-patches -x $workingrepo/pool/*/$PACKAGEDIR/${PACKAGE}_${DEBVERSIONNOEPOCH}.dsc tempdefuzz
+    rm -rf tempdefuzz/debian/patches
+    cp -a tempgit/debian/patches tempdefuzz/debian/patches
+    rm -f tempdefuzz/debian/patches/series
+    cd tempdefuzz
+    touch debian/patches/series
+    while read patch; do
+        export QUILT_PATCHES=debian/patches
+        echo $patch >> debian/patches/series
+        if ! quilt push -a --fuzz 0; then
+            #this patch needs to be dealt with, try and fix it and if that
+            #is not possible remove it
+            if quilt push -a ; then
+                quilt refresh
+            else
+                head -n -1 debian/patches/series | sponge debian/patches/series
+            fi
+        fi
+    done < ../tempgit/debian/patches/series
+    cd ..
+    rm -rf tempgit/debian/patches
+    mv tempdefuzz/debian/patches tempgit/debian/patches
+    cd tempgit
+    git add debian/patches
+    git commit -m "Defuzz fuzzy quilt patches and/or disable broken quilt patches"
+fi
+Format `3.0 (quilt)', need to check/update patch stack
+examining quilt state (multiple patches, auto mode)
+dgit: base trees orig=ff10b14e20dec75bb087 o+d/p=a53c8e95bf7058718d9e
+dgit: quilt differences: src:  ## orig ##     gitignores:  == orig ==
+dgit: quilt differences:      HEAD == o+d/p               HEAD == o+d/p
+starting quiltify (multiple patches, auto mode)
+quiltify linearisation planning successful, executing...
+nothing quilty to commit, ok.
+
+dgit -wgf --quilt=auto -v_ build-source
+Format `3.0 (quilt)', need to check/update patch stack
+examining quilt state (multiple patches, auto mode)
+dgit: base trees orig=ff10b14e20dec75bb087 o+d/p=a53c8e95bf7058718d9e
+dgit: quilt differences: src:  ## orig ##     gitignores:  == orig ==
+dgit: quilt differences:      HEAD == o+d/p               HEAD == o+d/p
+starting quiltify (multiple patches, auto mode)
+quiltify linearisation planning successful, executing...
+nothing quilty to commit, ok.
+dpkg-source: info: using source format '3.0 (quilt)'
+dpkg-source: info: building test1 using existing ./test1_2.orig.tar.gz
+dpkg-source: info: building test1 in test1_2-1+test1.debian.tar.xz
+dpkg-source: info: building test1 in test1_2-1+test1.dsc
+dpkg-genchanges: info: not including original source code in upload
+dgit ok: source built, results in test1_2-1+test1.dsc and test1_2-1+test1_source.changes
+
+cd $tmp/makeforwardport
+
+if [[ $dosbuild == yes ]]; then
+    rm *.changes
+    #going forward it would be good to have more inteligent application of --force-orig-source, not a massive priority for now though
+    sbuild -snA --force-orig-source -d ${TARGETSUITE} ${PACKAGE}_${NEWVERSIONNOEPOCH}.dsc
+else
+    #dgit build-source doens't seem to allow forced inclusion of the orig
+    #tarball, so use changestool to add it.
+    changestool ${PACKAGE}_${NEWVERSIONNOEPOCH}_*.changes includeallsources
+fi
+Going to add 'test1_2.orig.tar.gz' to 'test1_2-1+test1_source.changes'.
+
+#we want to make sure that the result at this point gets preserved even dgit push fails for some reason.
+cd $outputdir
+pwd
+/build/autoforwardportergit/tests/output
+dcmd cp $tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_*.changes .
+cd $tmp/makeforwardport/tempgit
+
+
+if [[ $dodgitpush == yes ]]; then
+    $AFPGCONFIG/setup-dgit-for-push
+    PATH=$SCRIPTDIR/dummy-dput:$PATH dgit push --deliberately-not-fast-forward 
+    cd $outputdir
+    dcmd cp $tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_armhf.changes .
+fi
+
+#check we actually produced a result
+[ -f output/test1_2-1+test1.dsc ]
+
+#now for a different case, test the case where we need to generate a version
+#with the marker in the middle
+
+dpkg-source -b test1_1-1+debu1
+dpkg-source: info: using source format '3.0 (quilt)'
+dpkg-source: info: building test1 using existing ./test1_1.orig.tar.gz
+dpkg-source: info: building test1 in test1_1-1+debu1.debian.tar.xz
+dpkg-source: info: building test1 in test1_1-1+debu1.dsc
+cd workingrepo
+reprepro removesrc test-deb test1
+Exporting indices...
+Deleting files no longer referenced...
+reprepro includedsc test-deb ../test1_1-1+debu1.dsc
+Warning: strange section 'unknown'!
+Exporting indices...
+cd ..
+
+../dscdirtogitdriver test
+#!/bin/bash -ev
+set -o pipefail
+SCRIPTDIR=`dirname $(readlink -f $0)`
+source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail main:dscdirtogitargs)
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail main:dscdirtogitargs
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+AFPGCONFIG='/build/autoforwardportergit/tests'
+localmarker='+test'
+revertmarker='+zrvt'
+importname='Autoforwardporter test git importer'
+importemail='fake@fake'
+dscdirtogitargs=''
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail main:dscdirtogitargs
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+AFPGCONFIG='/build/autoforwardportergit/tests'
+localmarker='+test'
+revertmarker='+zrvt'
+importname='Autoforwardporter test git importer'
+importemail='fake@fake'
+dscdirtogitargs=''
+
+mkdir -p ${gitdir}
+cd ${gitdir}
+${SCRIPTDIR}/pooltogit $dscdirtogitargs $workingrepo/pool/ $AFPGCONFIG/whitelist.import $localmarker'$'$revertmarker
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1~foo.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+debu1.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1.dsc
+1-1
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+debu1.dsc
+1-1+debu1
+starting import process for 1-1+debu1 tag name 1-1+debu1
+['git', 'checkout', '-q', '--detach']
+fatal: You are on a branch yet to be born
+dpkg-source: warning: extracting unsigned source package (/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+debu1.dsc)
+dpkg-source: info: extracting test1 in extract
+dpkg-source: info: unpacking test1_1.orig.tar.gz
+dpkg-source: info: unpacking test1_1-1+debu1.debian.tar.xz
+ignoring error, probablly a newly created repo
+
+['dgit', 'import-dsc', '/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+debu1.dsc', '+workingbranch']
+dgit: warning: importing unsigned .dsc
+Dgit metadata in .dsc: NO git hash
+made symlink ../test1_1-1+debu1.debian.tar.xz -> /build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+debu1.debian.tar.xz
+using existing test1_1.orig.tar.gz
+using existing test1_1-1+debu1.debian.tar.xz
+dpkg-source: warning: extracting unsigned source package (test1.dsc)
+dpkg-source: info: extracting test1 in test1-1
+dpkg-source: info: unpacking test1_1.orig.tar.gz
+dpkg-source: info: unpacking test1_1-1+debu1.debian.tar.xz
+synthesised git commit from .dsc 1-1+debu1
+Import, forced update - synthetic orphan git history.
+dgit: import-dsc: results are in in git ref refs/heads/workingbranch
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1~foo.dsc
+1-1+test1~foo
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.dsc
+1-1+test1
+
+#for PACKAGE in $(cat $AFPGCONFIG/whitelist.import) ; do
+#    #| grep -v glibc
+#    if [[ $PACKAGE == lib* ]]; then
+#        PACKAGEDIR=${PACKAGE:0:4}/$PACKAGE
+#    else
+#        PACKAGEDIR=${PACKAGE:0:1}/$PACKAGE
+#    fi
+#
+#    mkdir -p ${gitdir}/$PACKAGEDIR
+#    #echo changing to ${gitdir}/$PACKAGEDIR
+#    cd ${gitdir}/$PACKAGEDIR
+#    if [ ! -d .git ]; then
+#        git init
+#    fi
+#    git config --local user.name "$importname"
+#    git config --local user.email "$importemail"
+#    echo ${SCRIPTDIR}/dscdirtogit $dscdirtogitargs $workingrepo/pool/*/$PACKAGEDIR $localmarker'$'$revertmarker
+#    ${SCRIPTDIR}/dscdirtogit $dscdirtogitargs $workingrepo/pool/*/$PACKAGEDIR $localmarker'$'$revertmarker 
+#done
+
+../forwardportdriver test
+#!/bin/bash -ev
+#Copyright (c) 2009-2017 Peter M. Green and Adam D. Barratt
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy of
+#this software and associated documentation files (the "Software"), to deal in
+#the Software without restriction, including without limitation the rights to
+#use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+#of the Software, and to permit persons to whom the Software is furnished to do
+#so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+#THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
+
+#based on code by adsb from 
+#http://anonscm.debian.org/gitweb/?p=mirror/britney1.git;a=blob_plain;f=britney;h=094ec121d5bea3e68af76c493f2b9d91d734f45e;hb=HEAD
+#I don't pretend to understand this perl code
+process_pkg_list() {
+  perl "-MAptPkg::Config '\$_config'" -e '
+    my $versioning = $_config->system->versioning;
+
+    while (<>) {
+      $current .= $_;
+
+      if (/^Package: (.*)$/) {
+        $pkg = $1;
+      } elsif (/^Version: (.*)$/) {
+        $version = $1;
+      } elsif (/^\s*$/) {
+        $data{"$pkg"}{"$version"} = $current;
+        $pkg = ""; $version = ""; $current = "";
+      }
+    }
+
+    $data{"$pkg"}{"$version"} = $current if length $current;
+
+    for $pkg2 (sort keys %data) {
+      @versions = (reverse sort {$versioning->compare($a,$b)} keys %{$data{"$pkg2"}});
+      print "$pkg2 $versions[0]\n";
+    }
+  '
+}
+
+set -o pipefail
+
+MAINSUITE=$1
+
+SCRIPTDIR=`dirname $(readlink -f $0)`
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE $MAINSUITE:WORKINGBRANCH main:outputdir main:AFPGCONFIG main:localmarker main:revertmarker
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+STAGINGSUITE='test-staging'
+UPSTREAMSUITE='test-deb'
+WORKINGBRANCH='test-working'
+outputdir='/build/autoforwardportergit/tests/output'
+AFPGCONFIG='/build/autoforwardportergit/tests'
+localmarker='+test'
+revertmarker='+zrvt'
+source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE $MAINSUITE:WORKINGBRANCH main:outputdir main:AFPGCONFIG main:localmarker main:revertmarker)
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE $MAINSUITE:WORKINGBRANCH main:outputdir main:AFPGCONFIG main:localmarker main:revertmarker
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+STAGINGSUITE='test-staging'
+UPSTREAMSUITE='test-deb'
+WORKINGBRANCH='test-working'
+outputdir='/build/autoforwardportergit/tests/output'
+AFPGCONFIG='/build/autoforwardportergit/tests'
+localmarker='+test'
+revertmarker='+zrvt'
+
+#update working repo
+cd $workingrepo
+
+for SUITE in ${MAINSUITE} ${STAGINGSUITE} ${UPSTREAMSUITE} ; do
+    sources=$workingrepo/dists/${SUITE}/main/source/Sources
+    cat $sources | process_pkg_list > $tmp/sources-${SUITE}-processed
+done
+
+for PACKAGE in $(cat $AFPGCONFIG/whitelist.${MAINSUITE}) ; do
+    echo ${PACKAGE}
+    MAINVERSION=`grep ^${PACKAGE}" " $tmp/sources-${MAINSUITE}-processed | cut -d " " -f 2`
+    STAGINGVERSION=`grep ^${PACKAGE}" " $tmp/sources-${STAGINGSUITE}-processed | cut -d " " -f 2`
+    DEBVERSION=`grep ^${PACKAGE}" " $tmp/sources-${UPSTREAMSUITE}-processed | cut -d " " -f 2`
+    echo ${PACKAGE}
+    echo main version $MAINVERSION
+    echo staging version $STAGINGVERSION
+    echo deb version $DEBVERSION
+    if [[ $STAGINGVERSION == *${localmarker}* ]] ; then
+	NEWVERSION=${DEBVERSION}${localmarker}1
+	OLDVERSION=${STAGINGVERSION}
+    elif [[ $MAINVERSION == *${localmarker}* ]] ; then
+	NEWVERSION=${DEBVERSION}${localmarker}1
+	OLDVERSION=${MAINVERSION}
+    elif [[ $STAGINGVERSION == *${revertmarker}* ]] ; then
+	if dpkg --compare-versions $STAGINGVERSION lt $DEBVERSION ; then
+	    echo no need to forward port rvt version as debian version is higher
+	    continue
+	fi
+	NEWVERSION=${DEBVERSION}${revertmarker}
+	OLDVERSION=${STAGINGVERSION}
+    else
+	echo no ${localmarker} version marker found in main version or staging version
+	echo and no ${revertmarker} marker found in staging version.
+	continue
+    fi
+    MAINBASEVERSION=`echo $MAINVERSION | sed "s/${localmarker}[0-9]*//" | sed "s/${revertmarker}[0-9]*//"`
+    STAGINGBASEVERSION=`echo $STAGINGVERSION | sed "s/${localmarker}[0-9]*//" | sed "s/${revertmarker}[0-9]*//"`
+    if dpkg --compare-versions $MAINBASEVERSION lt $DEBVERSION && dpkg --compare-versions $STAGINGBASEVERSION le $DEBVERSION; then
+	echo version ordering looks ok for forward porting
+	
+
+	if dpkg --compare-versions $NEWVERSION lt $STAGINGVERSION;then
+	    #sometimes Debian uses a version suffix that makes their new version
+	    #with our suffix on the end lower than our old version, we need
+	    #to take care of that.
+	    
+	    #there may be some escaping issues in this code, needs testing.
+	    echo "$localmarker" | sed 's/+/\\+/g'
+	    localmarkerescaped="$(echo "$localmarker" | sed 's/+/\\+/g')"
+	    revertmarkerescaped="$(echo "$revertmarker" | sed 's/+/\\+/g')"
+	    STAGINGPREMARKERVERSION=`echo $STAGINGVERSION | sed "s/${localmarker}[0-9]*.*//" | sed "s/${revertmarker}[0-9]*.*//"`
+	    echo 1 "$localmarkerescaped"
+	    echo 2 "$revertmarkerescaped"
+	    STAGINGVERSIONMARKER=`echo $STAGINGVERSION | grep -Eo "(${localmarkerescaped}|${revertmarkerescaped})[0-9]*"`
+	    STAGINGVERSIONUPTOANDINCLUDINGMARKER="${STAGINGPREMARKERVERSION}${STAGINGVERSIONMARKER}"
+	    NEWDEBSUFFIX=${DEBVERSION:${#STAGINGPREMARKERVERSION}}
+	    NEWVERSION=${STAGINGVERSIONUPTOANDINCLUDINGMARKER}${NEWDEBSUFFIX}
+	fi
+	if dpkg --compare-versions $NEWVERSION lt $STAGINGVERSION;then	
+	    echo ERROR: WTF: something really strange is going on with version numbers
+	    echo staging version: $STAGINGVERSION
+	    echo new version: $NEWVERSION
+	    exit 1
+	fi
+
+	NEWVERSIONNOEPOCH=`echo ${NEWVERSION} | sed -e s/^[^:]://`
+	if [ ! -e $outputdir/${PACKAGE}_${NEWVERSIONNOEPOCH}.log ] ; then
+	    ($SCRIPTDIR/makeforwardport $PACKAGE $OLDVERSION $DEBVERSION $NEWVERSION $STAGINGSUITE $WORKINGBRANCH || true) 2>&1 | tee $outputdir/${PACKAGE}_${NEWVERSIONNOEPOCH}.log
+	fi
+    fi
+
+done
+test1
+test1
+main version 1-1+test1
+staging version 1-1+test1
+deb version 1-1+debu1
+version ordering looks ok for forward porting
+\+test
+1 \+test
+2 \+zrvt
+#!/bin/bash -ev
+set -o pipefail
+SCRIPTDIR=`dirname $(readlink -f $0)`
+echo makeforwardport starting command: makeforwardport $1 $2 $3 $4 $5 $6
+makeforwardport starting command: makeforwardport test1 1-1+test1 1-1+debu1 1-1+test1+debu1 test-staging test-working
+PACKAGE=$1
+OLDVERSION=$2
+DEBVERSION=$3
+NEWVERSION=$4
+TARGETSUITE=$5
+BRANCHNAME=$6
+source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:forwardportname main:forwardportemail main:outputdir main:dosbuild main:dodgitpush)
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:forwardportname main:forwardportemail main:outputdir main:dosbuild main:dodgitpush
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+AFPGCONFIG='/build/autoforwardportergit/tests'
+localmarker='+test'
+revertmarker='+zrvt'
+forwardportname='Autoforwardporter test git importer'
+forwardportemail='fake@fake'
+outputdir='/build/autoforwardportergit/tests/output'
+dosbuild='no'
+dodgitpush='no'
+$SCRIPTDIR/afpg_readconfig.py          main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:forwardportname main:forwardportemail main:outputdir main:dosbuild main:dodgitpush
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+AFPGCONFIG='/build/autoforwardportergit/tests'
+localmarker='+test'
+revertmarker='+zrvt'
+forwardportname='Autoforwardporter test git importer'
+forwardportemail='fake@fake'
+outputdir='/build/autoforwardportergit/tests/output'
+dosbuild='no'
+dodgitpush='no'
+
+
+NEWVERSIONNOEPOCH=`echo ${NEWVERSION} | sed -e s/^[^:]://`
+OLDVERSIONNOEPOCH=`echo ${OLDVERSION} | sed -e s/^[^:]://`
+DEBVERSIONNOEPOCH=`echo ${DEBVERSION} | sed -e s/^[^:]://`
+
+NEWTAG=`$SCRIPTDIR/versiontotag ${NEWVERSION}`
+OLDTAG=`$SCRIPTDIR/versiontotag ${OLDVERSION}`
+DEBTAG=`$SCRIPTDIR/versiontotag ${DEBVERSION}`
+
+if [[ $PACKAGE == lib* ]]; then
+    PACKAGEDIR=${PACKAGE:0:4}/$PACKAGE
+else
+    PACKAGEDIR=${PACKAGE:0:1}/$PACKAGE
+fi
+
+cd $tmp
+
+rm -rf makeforwardport
+mkdir makeforwardport
+cd makeforwardport
+git clone $gitdir/${PACKAGEDIR} tempgit
+Cloning into 'tempgit'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout.
+
+cd tempgit
+dgit setup-gitattributes
+git config --local user.name "Raspbian forward pporter"
+git config --local user.email root@raspbian.org
+#make sure there is no current branch
+git checkout -q --detach || true
+fatal: You are on a branch yet to be born
+
+git show ${OLDTAG}:debian/changelog > ../c1
+BASEVERSION=`$SCRIPTDIR/findchangelogunmarkedversion ../c1 $localmarker'$'$revertmarker`
+BASETAG=`$SCRIPTDIR/versiontotag ${BASEVERSION}`
+
+git branch -f debpsuedomerge $DEBTAG
+git checkout debpsuedomerge
+Switched to branch 'debpsuedomerge'
+echo git merge -s ours --ff $BASETAG
+git merge -s ours --ff 1-1
+git merge -s ours --ff -m 'pseudomerge to tie together broken upstream history' --allow-unrelated-histories $BASETAG
+Merge made by the 'ours' strategy.
+
+git branch -f $BRANCHNAME $OLDTAG
+git checkout $BRANCHNAME
+Switched to branch 'test-working'
+git config merge.conflictstyle diff3
+git merge debpsuedomerge || true #when a merge has conflicts git exits with a nonzero status code
+Auto-merging debian/changelog
+CONFLICT (content): Merge conflict in debian/changelog
+Automatic merge failed; fix conflicts and then commit the result.
+git diff --name-only --diff-filter=U > ../conflicts
+$SCRIPTDIR/fixupchangelog debian/changelog $NEWVERSION $TARGETSUITE "`date -uR`" $PACKAGE
+/usr/lib/python3/dist-packages/debian/changelog.py:275: UserWarning: Found eof where expected start of change data
+  warnings.warn(message)
+git add debian/changelog
+if grep ^debian/patches/series$ ../conflicts ; then
+	if grep '^<<<<<<< ' debian/patches/series ; then
+		$SCRIPTDIR/fixupseries debian/patches/series
+		git add debian/patches/series
+	else
+		#debian/patches/series is marked as conflicting but no conflict markers
+		#assume this means that upstream distribution no longer ships a
+		#debian/patches/series file.
+		git diff $BASETAG $OLDTAG | filterdiff -p1 -i debian/patches/series | egrep '^\+[^+]' | cut -c 2- > debian/patches/series
+		git add debian/patches/series
+	fi
+fi
+(if grep ^debian/control.md5sum$ ../conflicts ; then
+	#"kernel style" package,
+	(debian/rules clean || true) && debian/rules clean && git add debian/control.md5sum debian/control
+	if [ -f debian/config.defines.dump ]; then git add debian/config.defines.dump ; fi
+	if [ -f debian/rules.gen ]; then git add debian/rules.gen ; fi
+	if [ -f debian/tests/control ]; then git add debian/tests/control ; fi
+fi) || true
+
+if grep ^debian/control$ ../conflicts ; then
+	($SCRIPTDIR/fixupcontrol debian/control .. && git add debian/control) || true
+fi
+
+if grep ^debian/control.in$ ../conflicts ; then
+	($SCRIPTDIR/fixupcontrol debian/control.in .. && git add debian/control.in) || true
+fi
+
+if egrep '^debian/.*\.symbols$' ../conflicts ; then
+	echo conflicting symbols file found
+	for FILE in `egrep '^debian/.*\.symbols$' ../conflicts` ; do
+		($SCRIPTDIR/fixupsymbols $FILE .. && git add $FILE) || true
+	done
+	#($SCRIPTDIR/fixupcontrol debian/control .. && git add debian/control) || true
+fi
+
+
+#make sure no branch is checked out in our destination repo so that the push doesn't fail
+cd $gitdir/${PACKAGEDIR}
+git checkout -q --detach || true
+fatal: You are on a branch yet to be born
+cd $tmp/makeforwardport/tempgit
+git push -f origin $BRANCHNAME
+To /build/autoforwardportergit/tests/git/t/test1
+ + 2f8fdef...5fdd43a test-working -> test-working (forced update)
+
+if ! git commit -m "Merge version $OLDVERSION and $DEBVERSION to produce $NEWVERSION" ; then
+    #push work in progress so it can be worked on manually
+    git diff --name-only --diff-filter=U > ../conflicts
+    echo conflicts found | cat - ../conflicts debian/changelog | sponge debian/changelog
+    git add debian/changelog
+    cat ../conflicts | while read CONFLICT; do
+        echo git add "$CONFLICT"
+        git add "$CONFLICT"
+    done
+    git commit -m "Failed merge of version $OLDVERSION and $DEBVERSION to produce $NEWVERSION, see list of conflicting files at the top of debian/changelog"
+    git push -f origin $BRANCHNAME
+    exit 1
+fi
+[test-working 7781735] Merge version 1-1+test1 and 1-1+debu1 to produce 1-1+test1+debu1
+
+#defuzz patches (not yet ported to git)
+#cd ..
+#rm -rf extract.defuzz
+#cp -a extract extract.defuzz
+#cd extract.defuzz
+#export QUILT_PATCHES=debian/patches
+#quilt push -a --fuzz 0 || true
+#while quilt push; do
+#	quilt refresh
+#	quilt push -a --fuzz 0 || true
+#done
+#cd ../extract
+#rm -rf debian/patches
+#mv ../extract.defuzz/debian/patches debian/ || true
+#rm -rf ../extract.defuzz
+
+
+git push -f origin $BRANCHNAME
+To /build/autoforwardportergit/tests/git/t/test1
+   5fdd43a..7781735  test-working -> test-working
+dcmd --orig cp $workingrepo/pool/*/$PACKAGEDIR/${PACKAGE}_${DEBVERSIONNOEPOCH}.dsc ..
+git status
+On branch test-working
+nothing to commit, working tree clean
+
+#quilt fixup code, try dgit first if that fails it's time to be more
+#aggressive.
+if ! dgit -wgf --quilt=auto quilt-fixup; then
+    cd ..
+    dpkg-source --skip-patches -x $workingrepo/pool/*/$PACKAGEDIR/${PACKAGE}_${DEBVERSIONNOEPOCH}.dsc tempdefuzz
+    rm -rf tempdefuzz/debian/patches
+    cp -a tempgit/debian/patches tempdefuzz/debian/patches
+    rm -f tempdefuzz/debian/patches/series
+    cd tempdefuzz
+    touch debian/patches/series
+    while read patch; do
+        export QUILT_PATCHES=debian/patches
+        echo $patch >> debian/patches/series
+        if ! quilt push -a --fuzz 0; then
+            #this patch needs to be dealt with, try and fix it and if that
+            #is not possible remove it
+            if quilt push -a ; then
+                quilt refresh
+            else
+                head -n -1 debian/patches/series | sponge debian/patches/series
+            fi
+        fi
+    done < ../tempgit/debian/patches/series
+    cd ..
+    rm -rf tempgit/debian/patches
+    mv tempdefuzz/debian/patches tempgit/debian/patches
+    cd tempgit
+    git add debian/patches
+    git commit -m "Defuzz fuzzy quilt patches and/or disable broken quilt patches"
+fi
+Format `3.0 (quilt)', need to check/update patch stack
+examining quilt state (multiple patches, auto mode)
+dgit: base trees orig=47d6fb220699dc2a1e82 o+d/p=2c9c867bb8a0281684b5
+dgit: quilt differences: src:  ## orig ##     gitignores:  == orig ==
+dgit: quilt differences:      HEAD == o+d/p               HEAD == o+d/p
+starting quiltify (multiple patches, auto mode)
+quiltify linearisation planning successful, executing...
+nothing quilty to commit, ok.
+
+dgit -wgf --quilt=auto -v_ build-source
+Format `3.0 (quilt)', need to check/update patch stack
+examining quilt state (multiple patches, auto mode)
+dgit: base trees orig=47d6fb220699dc2a1e82 o+d/p=2c9c867bb8a0281684b5
+dgit: quilt differences: src:  ## orig ##     gitignores:  == orig ==
+dgit: quilt differences:      HEAD == o+d/p               HEAD == o+d/p
+starting quiltify (multiple patches, auto mode)
+quiltify linearisation planning successful, executing...
+nothing quilty to commit, ok.
+dpkg-source: info: using source format '3.0 (quilt)'
+dpkg-source: info: building test1 using existing ./test1_1.orig.tar.gz
+dpkg-source: info: building test1 in test1_1-1+test1+debu1.debian.tar.xz
+dpkg-source: info: building test1 in test1_1-1+test1+debu1.dsc
+dpkg-genchanges: info: not including original source code in upload
+dgit ok: source built, results in test1_1-1+test1+debu1.dsc and test1_1-1+test1+debu1_source.changes
+
+cd $tmp/makeforwardport
+
+if [[ $dosbuild == yes ]]; then
+    rm *.changes
+    #going forward it would be good to have more inteligent application of --force-orig-source, not a massive priority for now though
+    sbuild -snA --force-orig-source -d ${TARGETSUITE} ${PACKAGE}_${NEWVERSIONNOEPOCH}.dsc
+else
+    #dgit build-source doens't seem to allow forced inclusion of the orig
+    #tarball, so use changestool to add it.
+    changestool ${PACKAGE}_${NEWVERSIONNOEPOCH}_*.changes includeallsources
+fi
+Going to add 'test1_1.orig.tar.gz' to 'test1_1-1+test1+debu1_source.changes'.
+
+#we want to make sure that the result at this point gets preserved even dgit push fails for some reason.
+cd $outputdir
+pwd
+/build/autoforwardportergit/tests/output
+dcmd cp $tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_*.changes .
+cd $tmp/makeforwardport/tempgit
+
+
+if [[ $dodgitpush == yes ]]; then
+    $AFPGCONFIG/setup-dgit-for-push
+    PATH=$SCRIPTDIR/dummy-dput:$PATH dgit push --deliberately-not-fast-forward 
+    cd $outputdir
+    dcmd cp $tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_armhf.changes .
+fi
+
+#check we actually produced a result
+[ -f output/test1_1-1+test1+debu1.dsc ]
+
+#now to test some quilt fixup stuff
+echo test2 >> whitelist.import
+echo test2 >> whitelist.test
+
+tar -zcf test2_1.orig.tar.gz test2_1.orig
+tar -zcf test2_2.orig.tar.gz test2_2.orig
+dpkg-source -b test2_1-1
+dpkg-source: info: using source format '3.0 (quilt)'
+dpkg-source: info: building test2 using existing ./test2_1.orig.tar.gz
+dpkg-source: info: building test2 in test2_1-1.debian.tar.xz
+dpkg-source: info: building test2 in test2_1-1.dsc
+dpkg-source -b test2_1-1+test1
+dpkg-source: info: using source format '3.0 (quilt)'
+dpkg-source: info: building test2 using existing ./test2_1.orig.tar.gz
+dpkg-source: info: building test2 in test2_1-1+test1.debian.tar.xz
+dpkg-source: info: building test2 in test2_1-1+test1.dsc
+dpkg-source -b test2_2-1
+dpkg-source: info: using source format '3.0 (quilt)'
+dpkg-source: info: building test2 using existing ./test2_2.orig.tar.gz
+dpkg-source: info: building test2 in test2_2-1.debian.tar.xz
+dpkg-source: info: building test2 in test2_2-1.dsc
+
+cd workingrepo
+reprepro includedsc test-staging ../test2_1-1+test1.dsc
+Warning: strange section 'unknown'!
+Exporting indices...
+reprepro includedsc test ../test2_1-1+test1.dsc
+Warning: strange section 'unknown'!
+Exporting indices...
+reprepro includedsc test-deb ../test2_2-1.dsc
+Warning: strange section 'unknown'!
+Exporting indices...
+cd ..
+#give it the needed base version
+dcmd cp -a test2_1-1.dsc workingrepo/pool/main/t/test2
+../dscdirtogitdriver test
+#!/bin/bash -ev
+set -o pipefail
+SCRIPTDIR=`dirname $(readlink -f $0)`
+source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail main:dscdirtogitargs)
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail main:dscdirtogitargs
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+AFPGCONFIG='/build/autoforwardportergit/tests'
+localmarker='+test'
+revertmarker='+zrvt'
+importname='Autoforwardporter test git importer'
+importemail='fake@fake'
+dscdirtogitargs=''
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail main:dscdirtogitargs
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+AFPGCONFIG='/build/autoforwardportergit/tests'
+localmarker='+test'
+revertmarker='+zrvt'
+importname='Autoforwardporter test git importer'
+importemail='fake@fake'
+dscdirtogitargs=''
+
+mkdir -p ${gitdir}
+cd ${gitdir}
+${SCRIPTDIR}/pooltogit $dscdirtogitargs $workingrepo/pool/ $AFPGCONFIG/whitelist.import $localmarker'$'$revertmarker
+Initialized empty Git repository in /build/autoforwardportergit/tests/git/t/test2/.git/
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1~foo.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+debu1.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_1-1+test1.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_2-1.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_1-1.dsc
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1.dsc
+1-1
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_1-1.dsc
+1-1
+starting import process for 1-1 tag name 1-1
+['git', 'checkout', '-q', '--detach']
+fatal: You are on a branch yet to be born
+dpkg-source: warning: extracting unsigned source package (/build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_1-1.dsc)
+dpkg-source: info: extracting test2 in extract
+dpkg-source: info: unpacking test2_1.orig.tar.gz
+dpkg-source: info: unpacking test2_1-1.debian.tar.xz
+ignoring error, probablly a newly created repo
+
+['dgit', 'import-dsc', '/build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_1-1.dsc', '+workingbranch']
+dgit: warning: importing unsigned .dsc
+Dgit metadata in .dsc: NO git hash
+made symlink ../test2_1.orig.tar.gz -> /build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_1.orig.tar.gz
+made symlink ../test2_1-1.debian.tar.xz -> /build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_1-1.debian.tar.xz
+using existing test2_1.orig.tar.gz
+using existing test2_1-1.debian.tar.xz
+dpkg-source: warning: extracting unsigned source package (test2.dsc)
+dpkg-source: info: extracting test2 in test2-1
+dpkg-source: info: unpacking test2_1.orig.tar.gz
+dpkg-source: info: unpacking test2_1-1.debian.tar.xz
+synthesised git commit from .dsc 1-1
+dgit: import-dsc: results are in in git ref refs/heads/workingbranch
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+debu1.dsc
+1-1+debu1
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1~foo.dsc
+1-1+test1~foo
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test1/test1_1-1+test1.dsc
+1-1+test1
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_1-1+test1.dsc
+1-1+test1
+starting import process for 1-1+test1 tag name 1-1+test1
+['git', 'checkout', '-q', '--detach']
+fatal: You are on a branch yet to be born
+dpkg-source: warning: extracting unsigned source package (/build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_1-1+test1.dsc)
+dpkg-source: info: extracting test2 in extract
+dpkg-source: info: unpacking test2_1.orig.tar.gz
+dpkg-source: info: unpacking test2_1-1+test1.debian.tar.xz
+dpkg-source: info: applying patch1
+dpkg-source: info: applying patch2
+ignoring error, probablly a newly created repo
+1-1
+['git', 'branch', '-f', 'workingbranch', '1-1']
+['dgit', 'import-dsc', '/build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_1-1+test1.dsc', '..workingbranch']
+dgit: warning: importing unsigned .dsc
+Dgit metadata in .dsc: NO git hash
+made symlink ../test2_1-1+test1.debian.tar.xz -> /build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_1-1+test1.debian.tar.xz
+using existing test2_1.orig.tar.gz
+using existing test2_1-1+test1.debian.tar.xz
+dpkg-source: warning: extracting unsigned source package (test2.dsc)
+dpkg-source: info: extracting test2 in test2-1
+dpkg-source: info: unpacking test2_1.orig.tar.gz
+dpkg-source: info: unpacking test2_1-1+test1.debian.tar.xz
+synthesised git commit from .dsc 1-1+test1
+Import, merging.
+dgit: import-dsc: results are in in git ref refs/heads/workingbranch
+/build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_2-1.dsc
+2-1
+starting import process for 2-1 tag name 2-1
+['git', 'checkout', '-q', '--detach']
+fatal: You are on a branch yet to be born
+dpkg-source: warning: extracting unsigned source package (/build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_2-1.dsc)
+dpkg-source: info: extracting test2 in extract
+dpkg-source: info: unpacking test2_2.orig.tar.gz
+dpkg-source: info: unpacking test2_2-1.debian.tar.xz
+ignoring error, probablly a newly created repo
+1-1
+['git', 'branch', '-f', 'workingbranch', '1-1']
+['dgit', 'import-dsc', '/build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_2-1.dsc', '..workingbranch']
+dgit: warning: importing unsigned .dsc
+Dgit metadata in .dsc: NO git hash
+made symlink ../test2_2.orig.tar.gz -> /build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_2.orig.tar.gz
+made symlink ../test2_2-1.debian.tar.xz -> /build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_2-1.debian.tar.xz
+using existing test2_2.orig.tar.gz
+using existing test2_2-1.debian.tar.xz
+dpkg-source: warning: extracting unsigned source package (test2.dsc)
+dpkg-source: info: extracting test2 in test2-2
+dpkg-source: info: unpacking test2_2.orig.tar.gz
+dpkg-source: info: unpacking test2_2-1.debian.tar.xz
+synthesised git commit from .dsc 2-1
+Import, merging.
+dgit: import-dsc: results are in in git ref refs/heads/workingbranch
+
+#for PACKAGE in $(cat $AFPGCONFIG/whitelist.import) ; do
+#    #| grep -v glibc
+#    if [[ $PACKAGE == lib* ]]; then
+#        PACKAGEDIR=${PACKAGE:0:4}/$PACKAGE
+#    else
+#        PACKAGEDIR=${PACKAGE:0:1}/$PACKAGE
+#    fi
+#
+#    mkdir -p ${gitdir}/$PACKAGEDIR
+#    #echo changing to ${gitdir}/$PACKAGEDIR
+#    cd ${gitdir}/$PACKAGEDIR
+#    if [ ! -d .git ]; then
+#        git init
+#    fi
+#    git config --local user.name "$importname"
+#    git config --local user.email "$importemail"
+#    echo ${SCRIPTDIR}/dscdirtogit $dscdirtogitargs $workingrepo/pool/*/$PACKAGEDIR $localmarker'$'$revertmarker
+#    ${SCRIPTDIR}/dscdirtogit $dscdirtogitargs $workingrepo/pool/*/$PACKAGEDIR $localmarker'$'$revertmarker 
+#done
+
+#test branchpointer
+../branchpointer test
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+'test1'
+main version 1-1+test1
+staging version 1-1+test1
+deb version 1-1+debu1
+'test2'
+main version 1-1+test1
+staging version 1-1+test1
+deb version 2-1
+
+#now lets try some actual forward porting
+../forwardportdriver test
+#!/bin/bash -ev
+#Copyright (c) 2009-2017 Peter M. Green and Adam D. Barratt
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy of
+#this software and associated documentation files (the "Software"), to deal in
+#the Software without restriction, including without limitation the rights to
+#use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+#of the Software, and to permit persons to whom the Software is furnished to do
+#so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+#THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
+
+#based on code by adsb from 
+#http://anonscm.debian.org/gitweb/?p=mirror/britney1.git;a=blob_plain;f=britney;h=094ec121d5bea3e68af76c493f2b9d91d734f45e;hb=HEAD
+#I don't pretend to understand this perl code
+process_pkg_list() {
+  perl "-MAptPkg::Config '\$_config'" -e '
+    my $versioning = $_config->system->versioning;
+
+    while (<>) {
+      $current .= $_;
+
+      if (/^Package: (.*)$/) {
+        $pkg = $1;
+      } elsif (/^Version: (.*)$/) {
+        $version = $1;
+      } elsif (/^\s*$/) {
+        $data{"$pkg"}{"$version"} = $current;
+        $pkg = ""; $version = ""; $current = "";
+      }
+    }
+
+    $data{"$pkg"}{"$version"} = $current if length $current;
+
+    for $pkg2 (sort keys %data) {
+      @versions = (reverse sort {$versioning->compare($a,$b)} keys %{$data{"$pkg2"}});
+      print "$pkg2 $versions[0]\n";
+    }
+  '
+}
+
+set -o pipefail
+
+MAINSUITE=$1
+
+SCRIPTDIR=`dirname $(readlink -f $0)`
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE $MAINSUITE:WORKINGBRANCH main:outputdir main:AFPGCONFIG main:localmarker main:revertmarker
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+STAGINGSUITE='test-staging'
+UPSTREAMSUITE='test-deb'
+WORKINGBRANCH='test-working'
+outputdir='/build/autoforwardportergit/tests/output'
+AFPGCONFIG='/build/autoforwardportergit/tests'
+localmarker='+test'
+revertmarker='+zrvt'
+source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE $MAINSUITE:WORKINGBRANCH main:outputdir main:AFPGCONFIG main:localmarker main:revertmarker)
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE $MAINSUITE:WORKINGBRANCH main:outputdir main:AFPGCONFIG main:localmarker main:revertmarker
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+STAGINGSUITE='test-staging'
+UPSTREAMSUITE='test-deb'
+WORKINGBRANCH='test-working'
+outputdir='/build/autoforwardportergit/tests/output'
+AFPGCONFIG='/build/autoforwardportergit/tests'
+localmarker='+test'
+revertmarker='+zrvt'
+
+#update working repo
+cd $workingrepo
+
+for SUITE in ${MAINSUITE} ${STAGINGSUITE} ${UPSTREAMSUITE} ; do
+    sources=$workingrepo/dists/${SUITE}/main/source/Sources
+    cat $sources | process_pkg_list > $tmp/sources-${SUITE}-processed
+done
+
+for PACKAGE in $(cat $AFPGCONFIG/whitelist.${MAINSUITE}) ; do
+    echo ${PACKAGE}
+    MAINVERSION=`grep ^${PACKAGE}" " $tmp/sources-${MAINSUITE}-processed | cut -d " " -f 2`
+    STAGINGVERSION=`grep ^${PACKAGE}" " $tmp/sources-${STAGINGSUITE}-processed | cut -d " " -f 2`
+    DEBVERSION=`grep ^${PACKAGE}" " $tmp/sources-${UPSTREAMSUITE}-processed | cut -d " " -f 2`
+    echo ${PACKAGE}
+    echo main version $MAINVERSION
+    echo staging version $STAGINGVERSION
+    echo deb version $DEBVERSION
+    if [[ $STAGINGVERSION == *${localmarker}* ]] ; then
+	NEWVERSION=${DEBVERSION}${localmarker}1
+	OLDVERSION=${STAGINGVERSION}
+    elif [[ $MAINVERSION == *${localmarker}* ]] ; then
+	NEWVERSION=${DEBVERSION}${localmarker}1
+	OLDVERSION=${MAINVERSION}
+    elif [[ $STAGINGVERSION == *${revertmarker}* ]] ; then
+	if dpkg --compare-versions $STAGINGVERSION lt $DEBVERSION ; then
+	    echo no need to forward port rvt version as debian version is higher
+	    continue
+	fi
+	NEWVERSION=${DEBVERSION}${revertmarker}
+	OLDVERSION=${STAGINGVERSION}
+    else
+	echo no ${localmarker} version marker found in main version or staging version
+	echo and no ${revertmarker} marker found in staging version.
+	continue
+    fi
+    MAINBASEVERSION=`echo $MAINVERSION | sed "s/${localmarker}[0-9]*//" | sed "s/${revertmarker}[0-9]*//"`
+    STAGINGBASEVERSION=`echo $STAGINGVERSION | sed "s/${localmarker}[0-9]*//" | sed "s/${revertmarker}[0-9]*//"`
+    if dpkg --compare-versions $MAINBASEVERSION lt $DEBVERSION && dpkg --compare-versions $STAGINGBASEVERSION le $DEBVERSION; then
+	echo version ordering looks ok for forward porting
+	
+
+	if dpkg --compare-versions $NEWVERSION lt $STAGINGVERSION;then
+	    #sometimes Debian uses a version suffix that makes their new version
+	    #with our suffix on the end lower than our old version, we need
+	    #to take care of that.
+	    
+	    #there may be some escaping issues in this code, needs testing.
+	    echo "$localmarker" | sed 's/+/\\+/g'
+	    localmarkerescaped="$(echo "$localmarker" | sed 's/+/\\+/g')"
+	    revertmarkerescaped="$(echo "$revertmarker" | sed 's/+/\\+/g')"
+	    STAGINGPREMARKERVERSION=`echo $STAGINGVERSION | sed "s/${localmarker}[0-9]*.*//" | sed "s/${revertmarker}[0-9]*.*//"`
+	    echo 1 "$localmarkerescaped"
+	    echo 2 "$revertmarkerescaped"
+	    STAGINGVERSIONMARKER=`echo $STAGINGVERSION | grep -Eo "(${localmarkerescaped}|${revertmarkerescaped})[0-9]*"`
+	    STAGINGVERSIONUPTOANDINCLUDINGMARKER="${STAGINGPREMARKERVERSION}${STAGINGVERSIONMARKER}"
+	    NEWDEBSUFFIX=${DEBVERSION:${#STAGINGPREMARKERVERSION}}
+	    NEWVERSION=${STAGINGVERSIONUPTOANDINCLUDINGMARKER}${NEWDEBSUFFIX}
+	fi
+	if dpkg --compare-versions $NEWVERSION lt $STAGINGVERSION;then	
+	    echo ERROR: WTF: something really strange is going on with version numbers
+	    echo staging version: $STAGINGVERSION
+	    echo new version: $NEWVERSION
+	    exit 1
+	fi
+
+	NEWVERSIONNOEPOCH=`echo ${NEWVERSION} | sed -e s/^[^:]://`
+	if [ ! -e $outputdir/${PACKAGE}_${NEWVERSIONNOEPOCH}.log ] ; then
+	    ($SCRIPTDIR/makeforwardport $PACKAGE $OLDVERSION $DEBVERSION $NEWVERSION $STAGINGSUITE $WORKINGBRANCH || true) 2>&1 | tee $outputdir/${PACKAGE}_${NEWVERSIONNOEPOCH}.log
+	fi
+    fi
+
+done
+test1
+test1
+main version 1-1+test1
+staging version 1-1+test1
+deb version 1-1+debu1
+version ordering looks ok for forward porting
+\+test
+1 \+test
+2 \+zrvt
+test2
+test2
+main version 1-1+test1
+staging version 1-1+test1
+deb version 2-1
+version ordering looks ok for forward porting
+#!/bin/bash -ev
+set -o pipefail
+SCRIPTDIR=`dirname $(readlink -f $0)`
+echo makeforwardport starting command: makeforwardport $1 $2 $3 $4 $5 $6
+makeforwardport starting command: makeforwardport test2 1-1+test1 2-1 2-1+test1 test-staging test-working
+PACKAGE=$1
+OLDVERSION=$2
+DEBVERSION=$3
+NEWVERSION=$4
+TARGETSUITE=$5
+BRANCHNAME=$6
+source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:forwardportname main:forwardportemail main:outputdir main:dosbuild main:dodgitpush)
+$SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:forwardportname main:forwardportemail main:outputdir main:dosbuild main:dodgitpush
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+AFPGCONFIG='/build/autoforwardportergit/tests'
+localmarker='+test'
+revertmarker='+zrvt'
+forwardportname='Autoforwardporter test git importer'
+forwardportemail='fake@fake'
+outputdir='/build/autoforwardportergit/tests/output'
+dosbuild='no'
+dodgitpush='no'
+$SCRIPTDIR/afpg_readconfig.py          main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:forwardportname main:forwardportemail main:outputdir main:dosbuild main:dodgitpush
+using autoforwardportergit config directory /build/autoforwardportergit/tests
+workingrepo='/build/autoforwardportergit/tests/workingrepo'
+gitdir='/build/autoforwardportergit/tests/git'
+tmp='/build/autoforwardportergit/tests/tmp'
+AFPGCONFIG='/build/autoforwardportergit/tests'
+localmarker='+test'
+revertmarker='+zrvt'
+forwardportname='Autoforwardporter test git importer'
+forwardportemail='fake@fake'
+outputdir='/build/autoforwardportergit/tests/output'
+dosbuild='no'
+dodgitpush='no'
+
+
+NEWVERSIONNOEPOCH=`echo ${NEWVERSION} | sed -e s/^[^:]://`
+OLDVERSIONNOEPOCH=`echo ${OLDVERSION} | sed -e s/^[^:]://`
+DEBVERSIONNOEPOCH=`echo ${DEBVERSION} | sed -e s/^[^:]://`
+
+NEWTAG=`$SCRIPTDIR/versiontotag ${NEWVERSION}`
+OLDTAG=`$SCRIPTDIR/versiontotag ${OLDVERSION}`
+DEBTAG=`$SCRIPTDIR/versiontotag ${DEBVERSION}`
+
+if [[ $PACKAGE == lib* ]]; then
+    PACKAGEDIR=${PACKAGE:0:4}/$PACKAGE
+else
+    PACKAGEDIR=${PACKAGE:0:1}/$PACKAGE
+fi
+
+cd $tmp
+
+rm -rf makeforwardport
+mkdir makeforwardport
+cd makeforwardport
+git clone $gitdir/${PACKAGEDIR} tempgit
+Cloning into 'tempgit'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout.
+
+cd tempgit
+dgit setup-gitattributes
+git config --local user.name "Raspbian forward pporter"
+git config --local user.email root@raspbian.org
+#make sure there is no current branch
+git checkout -q --detach || true
+fatal: You are on a branch yet to be born
+
+git show ${OLDTAG}:debian/changelog > ../c1
+BASEVERSION=`$SCRIPTDIR/findchangelogunmarkedversion ../c1 $localmarker'$'$revertmarker`
+BASETAG=`$SCRIPTDIR/versiontotag ${BASEVERSION}`
+
+git branch -f debpsuedomerge $DEBTAG
+git checkout debpsuedomerge
+Switched to branch 'debpsuedomerge'
+echo git merge -s ours --ff $BASETAG
+git merge -s ours --ff 1-1
+git merge -s ours --ff -m 'pseudomerge to tie together broken upstream history' --allow-unrelated-histories $BASETAG
+Already up-to-date.
+
+git branch -f $BRANCHNAME $OLDTAG
+git checkout $BRANCHNAME
+Switched to branch 'test-working'
+git config merge.conflictstyle diff3
+git merge debpsuedomerge || true #when a merge has conflicts git exits with a nonzero status code
+Auto-merging file1
+Auto-merging debian/changelog
+CONFLICT (content): Merge conflict in debian/changelog
+Automatic merge failed; fix conflicts and then commit the result.
+git diff --name-only --diff-filter=U > ../conflicts
+$SCRIPTDIR/fixupchangelog debian/changelog $NEWVERSION $TARGETSUITE "`date -uR`" $PACKAGE
+git add debian/changelog
+if grep ^debian/patches/series$ ../conflicts ; then
+	if grep '^<<<<<<< ' debian/patches/series ; then
+		$SCRIPTDIR/fixupseries debian/patches/series
+		git add debian/patches/series
+	else
+		#debian/patches/series is marked as conflicting but no conflict markers
+		#assume this means that upstream distribution no longer ships a
+		#debian/patches/series file.
+		git diff $BASETAG $OLDTAG | filterdiff -p1 -i debian/patches/series | egrep '^\+[^+]' | cut -c 2- > debian/patches/series
+		git add debian/patches/series
+	fi
+fi
+(if grep ^debian/control.md5sum$ ../conflicts ; then
+	#"kernel style" package,
+	(debian/rules clean || true) && debian/rules clean && git add debian/control.md5sum debian/control
+	if [ -f debian/config.defines.dump ]; then git add debian/config.defines.dump ; fi
+	if [ -f debian/rules.gen ]; then git add debian/rules.gen ; fi
+	if [ -f debian/tests/control ]; then git add debian/tests/control ; fi
+fi) || true
+
+if grep ^debian/control$ ../conflicts ; then
+	($SCRIPTDIR/fixupcontrol debian/control .. && git add debian/control) || true
+fi
+
+if grep ^debian/control.in$ ../conflicts ; then
+	($SCRIPTDIR/fixupcontrol debian/control.in .. && git add debian/control.in) || true
+fi
+
+if egrep '^debian/.*\.symbols$' ../conflicts ; then
+	echo conflicting symbols file found
+	for FILE in `egrep '^debian/.*\.symbols$' ../conflicts` ; do
+		($SCRIPTDIR/fixupsymbols $FILE .. && git add $FILE) || true
+	done
+	#($SCRIPTDIR/fixupcontrol debian/control .. && git add debian/control) || true
+fi
+
+
+#make sure no branch is checked out in our destination repo so that the push doesn't fail
+cd $gitdir/${PACKAGEDIR}
+git checkout -q --detach || true
+fatal: You are on a branch yet to be born
+cd $tmp/makeforwardport/tempgit
+git push -f origin $BRANCHNAME
+To /build/autoforwardportergit/tests/git/t/test2
+ * [new branch]      test-working -> test-working
+
+if ! git commit -m "Merge version $OLDVERSION and $DEBVERSION to produce $NEWVERSION" ; then
+    #push work in progress so it can be worked on manually
+    git diff --name-only --diff-filter=U > ../conflicts
+    echo conflicts found | cat - ../conflicts debian/changelog | sponge debian/changelog
+    git add debian/changelog
+    cat ../conflicts | while read CONFLICT; do
+        echo git add "$CONFLICT"
+        git add "$CONFLICT"
+    done
+    git commit -m "Failed merge of version $OLDVERSION and $DEBVERSION to produce $NEWVERSION, see list of conflicting files at the top of debian/changelog"
+    git push -f origin $BRANCHNAME
+    exit 1
+fi
+[test-working 89cb7e7] Merge version 1-1+test1 and 2-1 to produce 2-1+test1
+
+#defuzz patches (not yet ported to git)
+#cd ..
+#rm -rf extract.defuzz
+#cp -a extract extract.defuzz
+#cd extract.defuzz
+#export QUILT_PATCHES=debian/patches
+#quilt push -a --fuzz 0 || true
+#while quilt push; do
+#	quilt refresh
+#	quilt push -a --fuzz 0 || true
+#done
+#cd ../extract
+#rm -rf debian/patches
+#mv ../extract.defuzz/debian/patches debian/ || true
+#rm -rf ../extract.defuzz
+
+
+git push -f origin $BRANCHNAME
+To /build/autoforwardportergit/tests/git/t/test2
+   ad60838..89cb7e7  test-working -> test-working
+dcmd --orig cp $workingrepo/pool/*/$PACKAGEDIR/${PACKAGE}_${DEBVERSIONNOEPOCH}.dsc ..
+git status
+On branch test-working
+nothing to commit, working tree clean
+
+#quilt fixup code, try dgit first if that fails it's time to be more
+#aggressive.
+if ! dgit -wgf --quilt=auto quilt-fixup; then
+    cd ..
+    dpkg-source --skip-patches -x $workingrepo/pool/*/$PACKAGEDIR/${PACKAGE}_${DEBVERSIONNOEPOCH}.dsc tempdefuzz
+    rm -rf tempdefuzz/debian/patches
+    cp -a tempgit/debian/patches tempdefuzz/debian/patches
+    rm -f tempdefuzz/debian/patches/series
+    cd tempdefuzz
+    touch debian/patches/series
+    while read patch; do
+        export QUILT_PATCHES=debian/patches
+        echo $patch >> debian/patches/series
+        if ! quilt push -a --fuzz 0; then
+            #this patch needs to be dealt with, try and fix it and if that
+            #is not possible remove it
+            if quilt push -a ; then
+                quilt refresh
+            else
+                head -n -1 debian/patches/series | sponge debian/patches/series
+            fi
+        fi
+    done < ../tempgit/debian/patches/series
+    cd ..
+    rm -rf tempgit/debian/patches
+    mv tempdefuzz/debian/patches tempgit/debian/patches
+    cd tempgit
+    git add debian/patches
+    git commit -m "Defuzz fuzzy quilt patches and/or disable broken quilt patches"
+fi
+Format `3.0 (quilt)', need to check/update patch stack
+examining quilt state (multiple patches, auto mode)
+dgit: base trees orig=72ae09ef7271e3761562 o+d/p=72ae09ef7271e3761562
+dgit: quilt differences: src:  ## orig ==     gitignores:  == orig ==
+dgit: quilt differences:      HEAD ## o+d/p               HEAD == o+d/p
+starting quiltify (multiple patches, auto mode)
+quilt fixup cannot be linear, smashing...
+patching file file1
+Hunk #1 FAILED at 1.
+1 out of 1 hunk FAILED
+dpkg-source: info: the patch has fuzz which is not allowed, or is malformed
+dpkg-source: info: if patch 'patch1' is correctly applied by quilt, use 'quilt refresh' to update it
+dpkg-source: error: LC_ALL=C patch -t -F 0 -N -p1 -u -V never -E -b -B .pc/patch1/ --reject-file=- < work.orig.ZdEM0T/debian/patches/patch1 gave error exit status 1
+dgit: failed command: dpkg-source '-i(?:^|/)'\\'.git(?:/|$)' -I.git --commit --include-removal . 'auto-2-1+test1-89cb7e74a443a1ca1bce39283e164d3d0b96baf8-1527436950'
+dgit: subprocess failed with error exit status 2
+dpkg-source: warning: extracting unsigned source package (/build/autoforwardportergit/tests/workingrepo/pool/main/t/test2/test2_2-1.dsc)
+dpkg-source: info: extracting test2 in tempdefuzz
+dpkg-source: info: unpacking test2_2.orig.tar.gz
+dpkg-source: info: unpacking test2_2-1.debian.tar.xz
+Applying patch debian/patches/patch1
+patching file file1
+Hunk #1 FAILED at 1.
+1 out of 1 hunk FAILED -- rejects in file file1
+Patch debian/patches/patch1 does not apply (enforce with -f)
+Applying patch debian/patches/patch1
+patching file file1
+Hunk #1 FAILED at 1.
+1 out of 1 hunk FAILED -- rejects in file file1
+Patch debian/patches/patch1 does not apply (enforce with -f)
+No patches in series
+No patches in series
+No patches in series
+No patches in series
+Applying patch debian/patches/patch2
+patching file file1
+Hunk #1 FAILED at 9.
+1 out of 1 hunk FAILED -- rejects in file file1
+Patch debian/patches/patch2 does not apply (enforce with -f)
+Applying patch debian/patches/patch2
+patching file file1
+Hunk #1 succeeded at 9 with fuzz 2.
+
+Now at patch debian/patches/patch2
+Refreshed patch debian/patches/patch2
+[test-working 19e8b7d] Defuzz fuzzy quilt patches and/or disable broken quilt patches
+ 3 files changed, 16 insertions(+), 9 deletions(-)
+ create mode 100644 debian/patches/patch2~
+
+dgit -wgf --quilt=auto -v_ build-source
+Format `3.0 (quilt)', need to check/update patch stack
+examining quilt state (multiple patches, auto mode)
+dgit: base trees orig=e7cafbf6206d269485be o+d/p=e9a4ac495235090b1baf
+dgit: quilt differences: src:  ## orig ##     gitignores:  == orig ==
+dgit: quilt differences:      HEAD ## o+d/p               HEAD == o+d/p
+starting quiltify (multiple patches, auto mode)
+quilt fixup cannot be linear, smashing...
+dpkg-source: info: local changes detected, the modified files are:
+ work/file1
+dpkg-source: info: local changes have been recorded in a new patch: work/debian/patches/auto-2-1+test1-19e8b7d740c115356813ed0554b5b722b1489309-1527436953
+Commit Debian 3.0 (quilt) metadata
+
+[dgit (4.3~bpo9+1) quilt-fixup]
+
+[master e8a2cd2] Commit Debian 3.0 (quilt) metadata
+ 2 files changed, 37 insertions(+)
+ create mode 100644 debian/patches/auto-2-1+test1-19e8b7d740c115356813ed0554b5b722b1489309-1527436953
+dpkg-source: info: using source format '3.0 (quilt)'
+dpkg-source: info: building test2 using existing ./test2_2.orig.tar.gz
+dpkg-source: info: building test2 in test2_2-1+test1.debian.tar.xz
+dpkg-source: info: building test2 in test2_2-1+test1.dsc
+dpkg-genchanges: info: not including original source code in upload
+dgit ok: source built, results in test2_2-1+test1.dsc and test2_2-1+test1_source.changes
+
+cd $tmp/makeforwardport
+
+if [[ $dosbuild == yes ]]; then
+    rm *.changes
+    #going forward it would be good to have more inteligent application of --force-orig-source, not a massive priority for now though
+    sbuild -snA --force-orig-source -d ${TARGETSUITE} ${PACKAGE}_${NEWVERSIONNOEPOCH}.dsc
+else
+    #dgit build-source doens't seem to allow forced inclusion of the orig
+    #tarball, so use changestool to add it.
+    changestool ${PACKAGE}_${NEWVERSIONNOEPOCH}_*.changes includeallsources
+fi
+Going to add 'test2_2.orig.tar.gz' to 'test2_2-1+test1_source.changes'.
+
+#we want to make sure that the result at this point gets preserved even dgit push fails for some reason.
+cd $outputdir
+pwd
+/build/autoforwardportergit/tests/output
+dcmd cp $tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_*.changes .
+cd $tmp/makeforwardport/tempgit
+
+
+if [[ $dodgitpush == yes ]]; then
+    $AFPGCONFIG/setup-dgit-for-push
+    PATH=$SCRIPTDIR/dummy-dput:$PATH dgit push --deliberately-not-fast-forward 
+    cd $outputdir
+    dcmd cp $tmp/makeforwardport/${PACKAGE}_${NEWVERSIONNOEPOCH}_armhf.changes .
+fi
+
+#check we actually produced a result
+[ -f output/test2_2-1+test1.dsc ]
+
+
+
+echo tests finished succesfully
+tests finished succesfully

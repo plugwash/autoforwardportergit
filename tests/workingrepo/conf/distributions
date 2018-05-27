@@ -22,3 +22,11 @@ Architectures: source
 Description: autoforwardportergit test repo
 DscIndices: Sources Release . .gz
 
+Origin: Test
+Label: Test
+Codename: foo
+Components: main
+Architectures: source
+Description: autoforwardportergit test repo
+DscIndices: Sources Release . .gz
+

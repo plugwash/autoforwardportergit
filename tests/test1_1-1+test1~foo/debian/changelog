@@ -1,0 +1,18 @@
+test1 (1-1+test1~foo) foo; urgency=medium
+
+  * Dummy changelog entry with version number below previous entry.
+    (simulating a backport or so)
+
+ -- plugwash <plugwash@afpgtest>  Sat, 05 Aug 2017 11:03:12 +0100
+
+test1 (1-1+test1) test; urgency=medium
+
+  * Dummy changelog entry
+
+ -- plugwash <plugwash@afpgtest>  Sat, 05 Aug 2017 11:03:12 +0100
+
+test1 (1-1) unstable; urgency=medium
+
+  * Dummy package for autoforwardportergit testing.
+
+ -- plugwash <plugwash@afpgtest>  Sat, 05 Aug 2017 10:48:49 +0100

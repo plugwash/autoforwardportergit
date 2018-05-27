@@ -244,6 +244,9 @@ def importdsc(version,tagname,repo):
 							parenttagname = ctagname
 							parenttag = ctag
 							break
+					if (cversion,change.package) in versiondict:
+						print('package depends on earlier known version '+str(cversion))
+						return (cversion,currentpackage,change.package)
 					if local:
 						print('immediate parent '+str(cversion)+' for local version '+str(version)+' not found')
 						return (cversion,currentpackage,change.package)
@@ -289,6 +292,12 @@ def importdsc(version,tagname,repo):
 		repo.create_tag(tagname,branch)
 		return 0
 
+#dictionary used to "promote" imports when an earlier version depends on a later
+#version
+versiondict = {}
+for (version,package,filename) in versions:
+	versiondict[(version,package)] = filename
+
 versionqueue = collections.deque(versions)
 while versionqueue: #while the queue of versions is not empty
 	(version,package,filename) = versionqueue.popleft()
@@ -302,9 +311,17 @@ while versionqueue: #while the queue of versions is not empty
 		if (result == 0):
 			pass #success
 		elif isinstance(result,tuple):
-			if args.snapshot:
-				versionqueue.appendleft((version,package,filename))
-				(baseversion,currentpackage,basepackage) = result
+			versionqueue.appendleft((version,package,filename))
+			(baseversion,currentpackage,basepackage) = result
+			if (baseversion,basepackage) in versiondict:
+				if versiondict[(baseversion,basepackage)] == '!!!LOOP!!!':
+					print('version loop detected, aborting')
+					sys.exit(1)
+				else:
+					basefilename = versiondict[(baseversion,basepackage)]
+					versionqueue.appendleft((baseversion,basepackage,basefilename))
+					versiondict[(baseversion,basepackage)] = '!!!LOOP!!!'
+			elif args.snapshot:
 				baseversionstr = str(baseversion)
 				#if (currentpackage != basepackage):
 				#	print('not auto-fetching dsc due to package name mismatch')

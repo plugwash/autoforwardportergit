@@ -48,12 +48,12 @@ Autoforwardportergit also supports a "revert marker". This is used to mark
 packages where you have reverted your local changes, but still need to raise
 the version number to preserve version ordering.
 
-## dscdirtogit
+## pooltogit
 
 The first stage of the process is getting your source packages into git with
-a sensible history. This is the function of dscdirtogit.
+a sensible history. This is the function of pooltogit.
 
-Versions of a package are imported in version number order and dgit is used
+Versions of a packages are imported in version number order and dgit is used
 to import the packages. If the package has a dgit: line then the package is
 simply imported using that commit.
 
@@ -61,28 +61,31 @@ If the package does not have a dgit tag then the history is built based on the
 changelogs. The exact behaviour depends on whether the version contains a local
 marker.
 
-If there is a local marker in the version number then dscdirtogit strictly
+If there is a local marker in the version number then pooltogit strictly
 insists on using the immediate parent. If the --snapshot option is specified
-to dscdirtogit then dscdirtogit will attempt to use snapshotsecure to retrive
+to pooltogit then pooltogit will attempt to use snapshotsecure to retrive
 the package from snapshot.debian.org. If the immediate parent does not exist
 and the user has not specified the --snapshot option or the retrieval from
 snapshot.debian.org fails the import process will abort. Sometimes it will be
-nessacery to manually download a dsc to the pool and re-run dscdirtogit.
+nessacery to manually download a dsc to the pool and re-run pooltogit.
 
-If there is not a local version marker then dscdirtogit is more lax, it will
+If there is not a local version marker then pooltogit is more lax, it will
 work backwards through the changelog until it finds a version that it can use
 as the parent. If it doesn't find any then it will import the package with an
 orphan history.
 
-dscdirtogit is not normally invoked directly. Dscdirtogitdriver is used to
-read a whitelist of packages and run dscdirtogit for each package with the
-correct options.
+Pooltogit operates on a whitelist of packages. Unlike it's predecessor
+dscdirtogit it is able to follow history across package name changes.
+
+pooltogit is not normally invoked directly. Dscdirtogitdriver is used to
+read configuration settings from the autoforwardportergitconfiguration and
+invoke pooltogit in the appropriate directory with the appropriate arguments.
 
 dscdirtogitdriver is invoked as
 
 <path>/dscdirtogitdriver
 
-Options for dscdirtogit can be specified by the dscdirtogitargs option in the
+Options for pooltogit can be specified by the dscdirtogitargs option in the
 main section of the autoforwardportergit configuration file.
 
 ## the actual autoforwardporter

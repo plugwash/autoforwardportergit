@@ -4,6 +4,7 @@ SCRIPTDIR=`dirname $(readlink -f $0)`
 source <($SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail main:dscdirtogitargs)
 $SCRIPTDIR/afpg_readconfig.py main:workingrepo main:gitdir main:tmp main:AFPGCONFIG main:localmarker main:revertmarker main:importname main:importemail main:dscdirtogitargs
 
+mkdir -p ${gitdir}
 cd ${gitdir}
 ${SCRIPTDIR}/pooltogit $dscdirtogitargs $workingrepo/pool/ $AFPGCONFIG/whitelist.import $localmarker'$'$revertmarker
 

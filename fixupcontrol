@@ -221,7 +221,7 @@ if (trymerge(ld,lm,lu) != 0):
 
 	#sys.exit(1)
 
-	finalset = smbd | usadded | dsadded - usremoved - dsremoved
+	finalset = (smbd | usadded | dsadded) - usremoved - dsremoved
 
 	final = collections.OrderedDict()
 	#for dep in dubd:

@@ -229,18 +229,19 @@ if (trymerge(ld,lm,lu) != 0):
 	#for dep in ddbd:
 	#	final[dep] = 1;
 	for dep in mergelists(list(dubd.keys()),b = list(ddbd.keys())):
-		#print(dep)
-		if dep not in ddbd:
-			final[dep] = dubd[dep]
-		elif dep not in dubd:
-			final[dep] = ddbd[dep]
-		elif set(p[0] for p in dubd[dep]) == set(p[0] for p in ddbd[dep]):
-			final[dep] = dubd[dep]
-		else:
-			#print(repr(dubd[dep]))
-			#print(repr(dubd[dep][0]))
-			print('upstream and downstream have dependency on '+dep.decode('ascii')+' with different metadata, this is currently unhandled, upstream metadata is '+list(p[0] for p in dubd[dep])+' downstream metadata is '+list(p[0] for p in ddbd[dep]))
-			exit(1)
+		if dep in finalset:
+			#print(dep)
+			if dep not in ddbd:
+				final[dep] = dubd[dep]
+			elif dep not in dubd:
+				final[dep] = ddbd[dep]
+			elif set(p[0] for p in dubd[dep]) == set(p[0] for p in ddbd[dep]):
+				final[dep] = dubd[dep]
+			else:
+				#print(repr(dubd[dep]))
+				#print(repr(dubd[dep][0]))
+				print('upstream and downstream have dependency on '+dep.decode('ascii')+' with different metadata, this is currently unhandled, upstream metadata is '+list(p[0] for p in dubd[dep])+' downstream metadata is '+list(p[0] for p in ddbd[dep]))
+				exit(1)
 	firstdep = True
 	regeneratedbuilddeps = []
 	#print(repr(final))

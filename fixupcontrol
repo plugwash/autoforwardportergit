@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-#(C) 2017 Peter Michael Green <plugwash@debian.org>
+#(C) 2017-2018 Peter Michael Green <plugwash@debian.org>
 #This software is provided 'as-is', without any express or implied warranty. In
 #no event will the authors be held liable for any damages arising from the use
 #of this software.
@@ -23,7 +23,9 @@ import re
 import subprocess
 import collections
 from difflib import SequenceMatcher
+from difflib import unified_diff
 from afpg_util import mergelists
+import deb822
 
 filetofix = sys.argv[1]
 tempdir = sys.argv[2]
@@ -35,34 +37,31 @@ f.close()
 ld = []
 lm = []
 lu = []
-fd = open(tempdir+'/dtmp','wb')
-fm = open(tempdir+'/mtmp','wb')
-fu = open(tempdir+'/utmp','wb')
-
 
 mode = 0; # 0: unconflicted text 1: downstream text 2: mergehead text 3: upstream text
 
-downstream = set()
-mergehead = set()
-upstream = set()
-deferred = []
+#downstream = set()
+#mergehead = set()
+#upstream = set()
+#deferred = []
 
-def writesplitline(f,line):
-	hasnewline = False
-	if line[-1:] == b"\n":
-		line = line[:-1]
-		hasnewline = True
-	#print(repr(line[-1:]))
-	linesplit = re.match(rb'^(\s*[^\s]*)(.*)$',line).groups()
-	
-	f.write(b'[1]'+linesplit[0]+b"\n")
-	f.write(b'[2]'+linesplit[1]+b"\n")
-	if hasnewline:
-		f.write(b'[3]'+linesplit[0]+b"\n")
-	else:
-		f.write(b'[3]'+linesplit[0])
-
+#def writesplitline(f,line):
+#	hasnewline = False
+#	if line[-1:] == b"\n":
+#		line = line[:-1]
+#		hasnewline = True
+#	#print(repr(line[-1:]))
+#	linesplit = re.match(rb'^(\s*[^\s]*)(.*)$',line).groups()
+#	
+#	f.write(b'[1]'+linesplit[0]+b"\n")
+#	f.write(b'[2]'+linesplit[1]+b"\n")
+#	if hasnewline:
+#		f.write(b'[3]'+linesplit[0]+b"\n")
+#	else:
+#		f.write(b'[3]'+linesplit[0])
+#
 #for stage in range(0,2):
+
 for line in lines:
 		#print(repr(line))
 		if (line.startswith(b'<<<<<<< ')):
@@ -102,210 +101,264 @@ for line in lines:
 				lu.append(line)
 
 
-def trymerge(ld,lm,lu):
-	fd = open(tempdir+'/dtmp','wb')
-	fm = open(tempdir+'/mtmp','wb')
-	fu = open(tempdir+'/utmp','wb')
-	
-	for line in ld:
-		writesplitline(fd,line)
-	
-	for line in lm:
-		writesplitline(fm,line)
-	
-	for line in lu:
-		writesplitline(fu,line)
-	
-	fd.close()
-	fm.close()
-	fu.close()
+#def trymerge(ld,lm,lu):
+#	fd = open(tempdir+'/dtmp','wb')
+#	fm = open(tempdir+'/mtmp','wb')
+#	fu = open(tempdir+'/utmp','wb')
+#	
+#	for line in ld:
+#		writesplitline(fd,line)
+#	
+#	for line in lm:
+#		writesplitline(fm,line)
+#	
+#	for line in lu:
+#		writesplitline(fu,line)
+#	
+#	fd.close()
+#	fm.close()
+#	fu.close()
 
-	command = ['merge',tempdir+'/dtmp',tempdir+'/mtmp',tempdir+'/utmp']
-	print(command, flush=True)
-	return subprocess.call(command)
+#	command = ['merge',tempdir+'/dtmp',tempdir+'/mtmp',tempdir+'/utmp']
+#	print(command, flush=True)
+#	return subprocess.call(command)
+#
+#def splitonbuilddeps(lines):
+#	bbd = []
+#	bd = []
+#	abd = []
+#	mode = 0;
+#	for line in lines:
+#		if (mode == 0):
+#			if line.startswith(b'Build-Depends:'):
+#				mode = 1
+#				bd.append(line)
+#			else:
+#				bbd.append(line)
+#		elif (mode == 1):
+#			if (line.startswith(b' ') or line.startswith(b"\t")) and not line.isspace():
+#				bd.append(line)
+#			else:
+#				mode = 2
+#				abd.append(line)
+#		else:
+#			abd.append(line)
+#	if mode != 2:
+#		print('failed to split build-depends from rest of control content')
+#		sys.exit(1);
+#	return (bbd,bd,abd)
 
-def splitonbuilddeps(lines):
-	bbd = []
-	bd = []
-	abd = []
-	mode = 0;
-	for line in lines:
-		if (mode == 0):
-			if line.startswith(b'Build-Depends:'):
-				mode = 1
-				bd.append(line)
-			else:
-				bbd.append(line)
-		elif (mode == 1):
-			if (line.startswith(b' ') or line.startswith(b"\t")) and not line.isspace():
-				bd.append(line)
-			else:
-				mode = 2
-				abd.append(line)
-		else:
-			abd.append(line)
-	if mode != 2:
-		print('failed to split build-depends from rest of control content')
-		sys.exit(1);
-	return (bbd,bd,abd)
-
-def parsebuilddeps(lines):
-	text = lines[0][14:] + b''.join(lines[1:])
-	builddeplist = text.split(b',')
-	builddepdict = collections.OrderedDict()
-	for builddepraw in builddeplist:
-		builddep = builddepraw.strip()
-		p = builddepraw.find(builddep)
-		whitespacebefore = builddepraw[:p]
-		whitespaceafter = builddepraw[p+len(builddep):]
-		#print(repr(whitespacebefore)+' '+repr(builddep)+' '+repr(whitespaceafter))
-		#print(builddep)
-		match = re.match(b'[a-zA-Z0-9+-.]*',builddep)
+def parsedeps(lines):
+	text = ''.join(lines)
+	deplist = text.split(',')
+	depdict = collections.OrderedDict()
+	for depraw in deplist:
+		dep = depraw.strip()
+		p = depraw.find(dep)
+		whitespacebefore = depraw[:p]
+		whitespaceafter = depraw[p+len(dep):]
+		#print(repr(whitespacebefore)+' '+repr(dep)+' '+repr(whitespaceafter))
+		#print(dep)
+		match = re.match('[a-zA-Z0-9+-.]*',dep)
 		#print(repr(match.span()))
 		#sys.exit(1)
 		splitpos = match.span()[1]
-		dep = builddep[:splitpos]
-		meta = builddep[splitpos:]
+		#print(dep)
+		meta = dep[splitpos:]
+		dep = dep[:splitpos]
 		#print((dep,meta))
 		#sys.exit(1)
-		#split = re.split(b'[^a-zA-Z0-9+-.]',builddep,1)
+		#split = re.split(b'[^a-zA-Z0-9+-.]',dep,1)
 		#if len(split) == 2:
 		#	(dep,meta) = split
 		#else:
-		#	dep = builddep
+		#	dep = dep
 		#	meta = b''
-		if dep in builddepdict:
-			builddepdict[dep].append((meta,whitespacebefore,whitespaceafter))
+		if dep in depdict:
+			depdict[dep].append((meta,whitespacebefore,whitespaceafter))
 		else:
-			builddepdict[dep] = [(meta,whitespacebefore,whitespaceafter)]
-	#for line in builddepdict.items():
+			depdict[dep] = [(meta,whitespacebefore,whitespaceafter)]
+	#for line in depdict.items():
 	#	print(line)
 	#sys.exit(1)
-	return builddepdict
+	return depdict
 
-if (trymerge(ld,lm,lu) != 0): 
-	print('merge of processed files failed, trying plan B build-dep fixer')
-	
-	(ldbbd , ldbd , ldabd) = splitonbuilddeps(ld)
-	(lmbbd , lmbd , lmabd) = splitonbuilddeps(lm)
-	(lubbd , lubd , luabd) = splitonbuilddeps(lu)
-	
-	spacecount = 1;
-	if len(lubd) >= 2:
-		#print(lubd[1][spacecount])
-		#note: in python3 indexing a string produces a string
-		#but indexing a "bytes" produces a number
-		while lubd[1][spacecount] == b' '[0]:
-			spacecount += 1
-	
-	#for line in ldbd:
-	#	print(line)
-	#pase build-depends into dictionaries
-	ddbd = parsebuilddeps(ldbd)
-	dmbd = parsebuilddeps(lmbd)
-	dubd = parsebuilddeps(lubd)
-	
+def parsecontrol(controllist):
+	controldict = collections.OrderedDict()
+	for paragraph in deb822.Deb822.iter_paragraphs(controllist,shared_storage=False):
+		paragraphregen = str(paragraph).encode('utf-8').splitlines(True)
+		titleline = paragraphregen[0]
+		#print(titleline)
+		if titleline in controldict:
+			print('duplicate paragraphs')
+			sys.exit(1)
+		# second item in tuple is reserved for storing extra information
+		# to facilitate round trip conversion
+		controldict[titleline] = (paragraph,None)
+		#print(paragraph.__class__)
+		#sys.exit(1)
+		
+	return controldict
+
+def regencontrol(controldict):
+	controllist = []
+	#regenextra is not currently used, it is there in case I need to store
+	#extra stuff in future to allow round-tripping.
+	for titleline, (paragraph, regenextra) in controldict.items():
+		if controllist != []:
+			controllist += [b'\n']
+		paragraphregen = str(paragraph).encode('utf-8').splitlines(True)
+		#print(paragraph.__class__)
+		#sys.exit(1)
+		controllist += paragraphregen
+	return controllist
+
+#print(repr(lu[0]))
+#print(repr(luregen[0]))
+
+def failifmismatch(a,b,fna,fnb):
+	if luregen != lu:
+		print('cannot round trip control data')
+		diff = unified_diff([repr(s)+'\n' for s in lu],[repr(s)+'\n' for s in luregen],fna,fnb)
+		for line in diff:
+			print(line.rstrip())
+		sys.exit(1)
+
+duparsed = parsecontrol(lu)
+luregen = regencontrol(duparsed)
+failifmismatch(lu,luregen,filetofix+' (upstream)',filetofix+' (upstream regenerated)')
+
+dmparsed = parsecontrol(lm)
+lmregen = regencontrol(dmparsed)
+failifmismatch(lm,lmregen,filetofix+' (mergehead)',filetofix+' (mergehead regenerated)')
+
+ddparsed = parsecontrol(ld)
+ldregen = regencontrol(ddparsed)
+failifmismatch(ld,ldregen,filetofix+' (downstream)',filetofix+' (downstream regenerated)')
+
+def mergekeysintoset(dd,dm,du):
 	#extract sets from dictionaries.
-	sdbd = set(ddbd.keys())
-	smbd = set(dmbd.keys())
-	subd = set(dubd.keys())
+	sd = set(dd.keys())
+	sm = set(dm.keys())
+	su = set(du.keys())
+	#print('downstream: '+repr(sd))
+	#print('mergehead: '+repr(sm))
+	#print('upstream: '+repr(su))
 
-	dsadded = sdbd - smbd
-	dsremoved = smbd - sdbd
-	usadded = subd - smbd
-	usremoved = smbd - subd
-	#print(dsadded)
-	#print(dsremoved)
-	#print(usadded)
-	#print(usremoved)
+	dsadded = sd - sm
+	dsremoved = sm - sd
+	usadded = su - sm
+	usremoved = sm - su
+	#print('dsadded: '+repr(dsadded))
+	#print('dsremoved: '+repr(dsremoved))
+	#print('usadded: '+repr(usadded))
+	#print('usremoved: '+repr(usremoved))
 
 	#sys.exit(1)
 
-	finalset = (smbd | usadded | dsadded) - usremoved - dsremoved
+	finalset = (sm | usadded | dsadded) - usremoved - dsremoved
+	#print('finalset: '+repr(finalset))
+	#print(sm-dsremoved)
+	return finalset
 
-	final = collections.OrderedDict()
-	#for dep in dubd:
-	#	final[dep] = 1;
-	#for dep in ddbd:
-	#	final[dep] = 1;
-	for dep in mergelists(list(dubd.keys()),b = list(ddbd.keys())):
-		if dep in finalset:
-			#print(dep)
-			if dep not in ddbd:
-				final[dep] = dubd[dep]
-			elif dep not in dubd:
-				final[dep] = ddbd[dep]
-			elif set(p[0] for p in dubd[dep]) == set(p[0] for p in ddbd[dep]):
-				final[dep] = dubd[dep]
+def merge3ordereddicts(dd,dm,du,dicttype,conflicthandler,tag):
+	finalset = mergekeysintoset(dd,dm,du)
+	print("finalset: "+repr(finalset))
+	final = dicttype()
+	for key in mergelists(list(du.keys()),b = list(dd.keys())):
+		if key in finalset:
+			if key not in dd:
+				final[key] = du[key]
+			elif key not in du:
+				final[key] = dd[key]
+			elif du[key] == dd[key]:
+				final[key] = du[key]
 			else:
-				#print(repr(dubd[dep]))
-				#print(repr(dubd[dep][0]))
-				print('upstream and downstream have dependency on '+dep.decode('ascii')+' with different metadata, this is currently unhandled, upstream metadata is '+list(p[0] for p in dubd[dep])+' downstream metadata is '+list(p[0] for p in ddbd[dep]))
-				exit(1)
+				value = conflicthandler(key,dd[key],dm[key],du[key],tag)
+				#print('setting '+repr(key)+' to '+repr(value))
+				final[key] = value
+	return(final)
+
+def handledepconflicts(key,downstream,mergehead,upstream,tag):
+	(paragraph,field) = tag
+	if set(p[0] for p in upstream) == set(p[0] for p in downstream):
+		return upstream
+	else:
+		#print(repr(dudep[dep]))
+		#print(repr(dudep[dep][0]))
+		print('upstream and downstream versions of paragraph '+repr(paragraph)+' have '+field+' on '+key.decode('ascii')+' with different metadata, this is currently unhandled, upstream metadata is '+list(p[0] for p in upstream)+' downstream metadata is '+list(p[0] for p in downstream))
+		exit(1)
+
+def handledepfieldconflicts(key,downstream,mergehead,upstream,tag):
+	field = key
+	paragraph = tag
+	#print("downstream: "+repr(downstream))
+	#print("mergehead: "+repr(mergehead))
+	#print("upstream: "+repr(upstream))
+	dddeps = parsedeps(downstream)
+	dmdeps = parsedeps(mergehead)
+	dudeps = parsedeps(upstream)
+	#print(repr(downstream))
+	#print(repr(dddeps))
+	#sys.exit(1)
+
+	final = merge3ordereddicts(dddeps,dmdeps,dudeps,collections.OrderedDict,handledepconflicts,(paragraph,field))
 	firstdep = True
-	regeneratedbuilddeps = []
+	regenerateddeps = []
 	#print(repr(final))
 	queued = ''
 	for (dep,meta) in final.items():
 		for (metaentry,whitespacebefore,whitespaceafter) in meta:
+			line = ''
 			if firstdep:
-				line = b'Build-Depends:'
 				firstdep = False
 			else:
-				line = b'';
-				regeneratedbuilddeps[-1] += queued
+				regenerateddeps[-1] += queued
 			#print(repr(dep)+' '+repr(metaentry))
 			line += whitespacebefore + dep + metaentry
 			#we don't want to add this stuff for the last line, so queue it here and
 			#add it on the next iteration
-			queued =  whitespaceafter+ b','
-			regeneratedbuilddeps.append(line)
-	#make sure end of lines in list match up with newlines and add final newline
-	regeneratedbuilddeps = list(line+b'\n' for line in b''.join(regeneratedbuilddeps).split(b'\n'))
-
-	ld = ldbbd + regeneratedbuilddeps + ldabd
-	lm = lmbbd + regeneratedbuilddeps + lmabd
-	lu = lubbd + regeneratedbuilddeps + luabd
+			queued =  whitespaceafter+ ','
+			regenerateddeps.append(line)
+	#convert result to a single string
+	regenerateddeps = ''.join(regenerateddeps)
+	return regenerateddeps
 
 
-	#usadded 
-
-	if (trymerge(ld,lm,lu) != 0): 
-		
-		print('merge of processed files failed, after plan B build-dep fixer, giving up')
+def handlefieldconflicts(key,downstream,mergehead,upstream,tag):
+	field = key
+	paragraph = tag
+	if key in {'Depends','Recommends','Suggests','Conflicts','Build-Depends','Build-Conflicts'}:
+		return handledepfieldconflicts(key,downstream,mergehead,upstream,tag)
+	else:
+		print('conflict in field '+repr(field)+' of paragraph '+repr(tag))
+		print('downstream content '+repr(downstream))
+		print('mergehead content '+repr(mergehead))
+		print('upstream content '+repr(upstream))
 		sys.exit(1)
 
-fd = open(tempdir+'/dtmp','rb')
 
-l1 = b''
-l2 = b''
-l3 = b''
+
+def handleparagraphconflicts(key,downstream,mergehead,upstream,tag):
+	regenextra = upstream[1]
+	if downstream[0] == upstream[0]:
+		result = upstream[0]
+	else:
+		result = merge3ordereddicts(downstream[0],mergehead[0],upstream[0],deb822.Deb822,handlefieldconflicts,key)
+	return (result,regenextra)
+
+finalparagraphs = merge3ordereddicts(ddparsed,dmparsed,duparsed,collections.OrderedDict,handleparagraphconflicts,None)
+finalregen = regencontrol(finalparagraphs)
+
+#for titleline, (paragraph, regenextra) in finalparagraphs.items():
+#	print(paragraph.__class__)
 
 f = open(filetofix+'.new','wb')
 
-for line in fd:
-	hasnewline = False
-	if line[-1:] == b"\n":
-		line = line[:-1]
-		hasnewline = True
-	if line[:3] == b'[1]':
-		l1 = line[3:]
-	elif line[:3] == b'[2]':
-		l2 = line[3:]
-	elif line[:3] == b'[3]':
-		l3 = line[3:]
-		if (l1 != l3):
-			print('l1 and l3 do not match in merge result')
-			sys.exit(1)
-		output = l1 + l2
-		if hasnewline:
-			output += b'\n';
-		f.write(output)
-	else:
-		print('unexpected line in merge result')
-		sys.exit(1)
+for line in finalregen:
+	f.write(line)
 
-f.close
+f.close()
 
 command = ['mv',filetofix+'.new',filetofix]
 print(command, flush=True)

@@ -31,7 +31,7 @@ cd $tmp
 rm -rf makeforwardport
 mkdir makeforwardport
 cd makeforwardport
-git clone $gitdir/${PACKAGEDIR} tempgit
+git clone --no-checkout $gitdir/${PACKAGEDIR} tempgit
 cd tempgit
 dgit setup-gitattributes
 git config --local user.name "Raspbian forward pporter"

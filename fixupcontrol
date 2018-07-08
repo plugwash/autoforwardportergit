@@ -185,16 +185,51 @@ def parsedeps(lines):
 
 def parsecontrol(controllist):
 	controldict = collections.OrderedDict()
-	for paragraph in deb822.Deb822.iter_paragraphs(controllist,shared_storage=False):
-		paragraphregen = str(paragraph).encode('utf-8').splitlines(True)
-		titleline = paragraphregen[0]
+	#split file into paragraphs.
+	foundnoncomment = False
+	paragraphnocomments = []
+	commentsbefore = []
+	linecomments = collections.defaultdict(list)
+	paragraphssplit = []
+	for line in controllist:
+		linestripped = line.strip()
+		if len(linestripped) == 0:
+			#blank line
+			if foundnoncomment:
+				#paragraph complete
+				paragraphssplit.append((paragraphnocomments,commentsbefore,linecomments))
+				foundnoncomment = False
+				paragraphnocomments = []
+				commentsbefore = []
+				linecomments = collections.defaultdict(list)
+			else:
+				commentsbefore.append(line)
+		elif (line[0] == ord(b'#')):
+			#comment line
+			if foundnoncomment:
+				linecomments[lastnoncommentline].append(line)
+			else:
+				commentsbefore.append(line)
+		else:
+			paragraphnocomments.append(line)
+			lastnoncommentline = line
+			foundnoncomment = True
+	if foundnoncomment:
+		#paragraph complete
+		paragraphssplit.append((paragraphnocomments,commentsbefore,linecomments))
+	
+	#for paragraph in deb822.Deb822.iter_paragraphs(controllist,shared_storage=False):
+	for (paragraphnocomments,commentsbefore,linecomments) in paragraphssplit:
+		#paragraphregen = str(paragraph).encode('utf-8').splitlines(True)
+		titleline = paragraphnocomments[0]
+		paragraph = deb822.Deb822(paragraphnocomments)
 		#print(titleline)
 		if titleline in controldict:
 			print('duplicate paragraphs')
 			sys.exit(1)
 		# second item in tuple is reserved for storing extra information
 		# to facilitate round trip conversion
-		controldict[titleline] = (paragraph,None)
+		controldict[titleline] = (paragraph,(commentsbefore,linecomments))
 		#print(paragraph.__class__)
 		#sys.exit(1)
 		
@@ -204,13 +239,17 @@ def regencontrol(controldict):
 	controllist = []
 	#regenextra is not currently used, it is there in case I need to store
 	#extra stuff in future to allow round-tripping.
-	for titleline, (paragraph, regenextra) in controldict.items():
+	for titleline, (paragraph, (commentsbefore,linecomments)) in controldict.items():
 		if controllist != []:
 			controllist += [b'\n']
+		controllist += commentsbefore
 		paragraphregen = str(paragraph).encode('utf-8').splitlines(True)
 		#print(paragraph.__class__)
 		#sys.exit(1)
-		controllist += paragraphregen
+		for line in paragraphregen:
+			controllist.append(line)
+			controllist += linecomments[line]
+	
 	return controllist
 
 #print(repr(lu[0]))
@@ -272,6 +311,10 @@ def merge3ordereddicts(dd,dm,du,dicttype,conflicthandler,tag):
 			elif key not in du:
 				final[key] = dd[key]
 			elif du[key] == dd[key]:
+				final[key] = du[key]
+			elif du[key] == dm[key]:
+				final[key] = dd[key]
+			elif dd[key] == dm[key]:
 				final[key] = du[key]
 			else:
 				value = conflicthandler(key,dd[key],dm[key],du[key],tag)

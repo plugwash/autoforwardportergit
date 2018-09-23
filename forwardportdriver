@@ -90,9 +90,8 @@ for PACKAGE in $(cat $AFPGCONFIG/whitelist.${MAINSUITE}) ; do
 	echo and no ${revertmarker} marker found in staging version.
 	continue
     fi
-    MAINBASEVERSION=`echo $MAINVERSION | sed "s/${localmarker}[0-9]*//" | sed "s/${revertmarker}[0-9]*//"`
-    STAGINGBASEVERSION=`echo $STAGINGVERSION | sed "s/${localmarker}[0-9]*//" | sed "s/${revertmarker}[0-9]*//"`
-    if dpkg --compare-versions $MAINBASEVERSION lt $DEBVERSION && dpkg --compare-versions $STAGINGBASEVERSION le $DEBVERSION; then
+    OLDBASEVERSION=`echo $OLDVERSION | sed "s/${localmarker}[0-9]*//" | sed "s/${revertmarker}[0-9]*//"`
+    if dpkg --compare-versions $OLDBASEVERSION lt $DEBVERSION; then
 	echo version ordering looks ok for forward porting
 	
 

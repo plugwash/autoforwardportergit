@@ -186,6 +186,9 @@ def parsedeps(lines):
 def lineendingfactory():
 	return b'\n'
 
+def spacefactory():
+	return b' '
+
 def parsecontrol(controllist):
 	controldict = collections.OrderedDict()
 	#split file into paragraphs.
@@ -194,6 +197,7 @@ def parsecontrol(controllist):
 	commentsbefore = []
 	linecomments = collections.defaultdict(list)
 	lineendwhitespace = collections.defaultdict(lineendingfactory)
+	fieldstartwhitespace = collections.defaultdict(spacefactory)
 	paragraphssplit = []
 	for line in controllist:
 		linestripped = line.strip()
@@ -205,12 +209,13 @@ def parsecontrol(controllist):
 					whitespaceafter = []
 				else:
 					whitespaceafter = [line[:-1]]
-				paragraphssplit.append([paragraphnocomments,commentsbefore,linecomments,whitespaceafter,lineendwhitespace])
+				paragraphssplit.append([paragraphnocomments,commentsbefore,linecomments,whitespaceafter,lineendwhitespace,fieldstartwhitespace])
 				foundnoncomment = False
 				paragraphnocomments = []
 				commentsbefore = []
 				linecomments = collections.defaultdict(list)
 				lineendwhitespace = collections.defaultdict(lineendingfactory)
+				fieldstartwhitespace = collections.defaultdict(spacefactory)
 			else:
 				commentsbefore.append(line)
 		elif (line[0] == ord(b'#')):
@@ -219,15 +224,39 @@ def parsecontrol(controllist):
 				linecomments[lastnoncommentline].append(line)
 			else:
 				commentsbefore.append(line)
-		else:
+		elif ((0x21 <= line[0] <= 0x39) or (0x3B <= line[0] <= 0x7F)):
+			#field line
+			linestripped = line.rstrip()
+			lews = line[len(linestripped):]
+			linesplit = linestripped.split(b':',1)
+			valuewithwhitespace = linesplit[1]
+			i = 0
+			print(repr(linestripped))
+			print(repr(valuewithwhitespace))
+			while (i < len(valuewithwhitespace)) and ((valuewithwhitespace[i] == ord(b' ') or valuewithwhitespace[i] == ord(b"\t"))):
+				i += 1
+			if (i != 1) or (valuewithwhitespace[0] != ord(b' ')):
+				valuewithoutwhitespace = valuewithwhitespace[i:]
+				linestripped = linesplit[0]+b': '+valuewithoutwhitespace
+				fieldstartwhitespace[linestripped] = valuewithwhitespace[:i]
+				print(repr(linestripped)+' '+repr(fieldstartwhitespace[linestripped]))
+			paragraphnocomments.append(linestripped)
+			lineendwhitespace[linestripped] = lews
+			lastnoncommentline = linestripped
+			foundnoncomment = True
+		elif line[0] == ord(b' '):
+			#continuation line
 			linestripped = line.rstrip()
 			paragraphnocomments.append(linestripped)
 			lineendwhitespace[linestripped] = line[len(linestripped):]
 			lastnoncommentline = linestripped
 			foundnoncomment = True
+		else:
+			print('unexpected first character on line')
+			sys.exit(1)
 	if foundnoncomment:
 		#paragraph complete
-		paragraphssplit.append([paragraphnocomments,commentsbefore,linecomments,[],lineendwhitespace])
+		paragraphssplit.append([paragraphnocomments,commentsbefore,linecomments,[],lineendwhitespace,fieldstartwhitespace])
 	else:
 		commentsafter = paragraphssplit[-1][3]
 		if len(commentsafter) == 0:
@@ -236,17 +265,19 @@ def parsecontrol(controllist):
 			commentsafter[-1] += b'\n'
 		paragraphssplit[-1][3] = commentsafter + commentsbefore
 	#for paragraph in deb822.Deb822.iter_paragraphs(controllist,shared_storage=False):
-	for (paragraphnocomments,commentsbefore,linecomments,commentsafter,lineendwhitespace) in paragraphssplit:
+	for (paragraphnocomments,commentsbefore,linecomments,commentsafter,lineendwhitespace,fieldstartwhitespace) in paragraphssplit:
 		#paragraphregen = str(paragraph).encode('utf-8').splitlines(True)
 		titleline = paragraphnocomments[0]
 		paragraph = deb822.Deb822(paragraphnocomments)
+		if titleline == b'Package: @DEV_PKG@':
+			print(repr(paragraph['Depends']))
 		#print(titleline)
 		if titleline in controldict:
 			print('duplicate paragraphs')
 			sys.exit(1)
 		# second item in tuple is reserved for storing extra information
 		# to facilitate round trip conversion
-		controldict[titleline] = (paragraph,(commentsbefore,linecomments,commentsafter,lineendwhitespace))
+		controldict[titleline] = (paragraph,(commentsbefore,linecomments,commentsafter,lineendwhitespace,fieldstartwhitespace))
 		#print(paragraph.__class__)
 		#sys.exit(1)
 		
@@ -256,7 +287,7 @@ def regencontrol(controldict):
 	controllist = []
 	#regenextra is not currently used, it is there in case I need to store
 	#extra stuff in future to allow round-tripping.
-	for titleline, (paragraph, (commentsbefore,linecomments,commentsafter,lineendwhitespace)) in controldict.items():
+	for titleline, (paragraph, (commentsbefore,linecomments,commentsafter,lineendwhitespace,fieldstartwhitespace)) in controldict.items():
 
 		if controllist != []:
 			if controllist[-1][-1:] != b'\n':
@@ -271,7 +302,11 @@ def regencontrol(controldict):
 			linestripped = line.rstrip()
 			#if titleline == b'Package: @DEV_PKG@':
 			#	print(repr(linestripped)+' '+repr(lineendwhitespace[linestripped]))
-			controllist.append(linestripped+lineendwhitespace[linestripped])
+			if fieldstartwhitespace[linestripped] == b' ':
+				controllist.append(linestripped+lineendwhitespace[linestripped])
+			else:
+				linesplit = line.split(b':',1)
+				controllist.append(linesplit[0]+b':'+fieldstartwhitespace[linestripped]+linesplit[1].strip()+lineendwhitespace[linestripped])
 			controllist += linecomments[linestripped]
 		controllist += commentsafter
 	
@@ -360,6 +395,7 @@ def handledepconflicts(key,downstream,mergehead,upstream,tag):
 def handledepfieldconflicts(key,downstream,mergehead,upstream,tag):
 	field = key
 	paragraph = tag
+	#print(paragraph)
 	#print("downstream: "+repr(downstream))
 	#print("mergehead: "+repr(mergehead))
 	#print("upstream: "+repr(upstream))
@@ -379,6 +415,7 @@ def handledepfieldconflicts(key,downstream,mergehead,upstream,tag):
 		for (metaentry,whitespacebefore,whitespaceafter) in meta:
 			line = ''
 			if firstdep:
+				#print(repr(whitespacebefore))
 				firstdep = False
 			else:
 				regenerateddeps[-1] += queued

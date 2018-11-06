@@ -85,6 +85,11 @@ if grep ^debian/control.in$ ../conflicts ; then
 	($SCRIPTDIR/fixupcontrol debian/control.in .. && git add debian/control.in) || true
 fi
 
+if grep ^debian/control.source$ ../conflicts ; then
+	($SCRIPTDIR/fixupcontrol debian/control.source .. && git add debian/control.source) || true
+fi
+
+
 if egrep '^debian/.*\.symbols$' ../conflicts ; then
 	echo conflicting symbols file found
 	for FILE in `egrep '^debian/.*\.symbols$' ../conflicts` ; do

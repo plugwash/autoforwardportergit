@@ -389,7 +389,7 @@ def handledepconflicts(key,downstream,mergehead,upstream,tag):
 	else:
 		#print(repr(dudep[dep]))
 		#print(repr(dudep[dep][0]))
-		print('upstream and downstream versions of paragraph '+repr(paragraph)+' have '+field+' on '+key.decode('ascii')+' with different metadata, this is currently unhandled, upstream metadata is '+list(p[0] for p in upstream)+' downstream metadata is '+list(p[0] for p in downstream))
+		print('upstream and downstream versions of paragraph '+repr(paragraph)+' have '+field+' on '+key+' with different metadata, this is currently unhandled, upstream metadata is '+repr(list(p[0] for p in upstream))+' downstream metadata is '+repr(list(p[0] for p in downstream)))
 		exit(1)
 
 def handledepfieldconflicts(key,downstream,mergehead,upstream,tag):

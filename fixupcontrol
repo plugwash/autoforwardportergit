@@ -384,12 +384,13 @@ def merge3ordereddicts(dd,dm,du,dicttype,conflicthandler,tag):
 
 #this decoder is very simplistic, it handles the most common case, it could
 #certainly be improved to handle other cases if that proves nessacery in the future.
-depmetapattern = re.compile(' \(([<>= a-zA-Z0-9:.+\-~]*)\) \[([ a-z0-9\!]*)\]')
+depmetapattern = re.compile('(?: \(([<>= a-zA-Z0-9:.+\-~]*)\))?(?: \[([ a-z0-9\!]*)\])?')
 def decodedepmeta(meta):
 	m = re.fullmatch(depmetapattern,meta)
 	if m is None:
 		print('unable to decode dependency metadata '+meta)
 		return None
+	#print(m.groups())
 	(versionrestriction,archlist) = m.groups()
 	return (versionrestriction,archlist)
 
@@ -413,16 +414,20 @@ def handledepconflicts(key,downstream,mergehead,upstream,tag):
 				versionrestriction = downstreammetadecoded[0]
 			else:
 				print('merging of version restrictions is not currently supported')
-				versionrestriction = None
+				versionrestriction = False
 			if downstreammetadecoded[1] == mergeheadmetadecoded[1]:
 				archlist = upstreammetadecoded[0]
 			elif upstreammetadecoded[1] == mergeheadmetadecoded[1]:
 				archlist = downstreammetadecoded[1]
 			else:
 				print('merging of architecture lists is not currently supported')
-				archlist = None
-			if (versionrestriction is not None) and (archlist is not None):
-				meta = ' ('+versionrestriction+') ['+archlist+']'
+				archlist = False
+			if (versionrestriction is not False) and (archlist is not False):
+				meta = ''
+				if versionrestriction is not None:
+					meta = ' ('+versionrestriction+')'
+				if archlist is not None:
+					meta +=  '['+archlist+']'
 				return [(meta,whitespacebefore,whitespaceafter)]
 	else:
 		print('automatic dependency merging is not currently supported when there are multiple dependencies on the same package')

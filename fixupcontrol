@@ -394,6 +394,51 @@ def decodedepmeta(meta):
 	(versionrestriction,archlist) = m.groups()
 	return (versionrestriction,archlist)
 
+def parsearchlist(alraw):
+	if alraw is None:
+		alparsed = []
+		alpositive = False
+	else:
+		alparsed = alraw.split(' ')
+		alpositive = (alparsed[0][0] != '!')
+		if not alpositive:
+			alparsed = [s[1:] for s in alparsed]
+	return (alpositive,alparsed)
+
+def listtoordereddict(l,v=''):
+	result = collections.OrderedDict()
+	for item in l:
+		result[item]=v
+	return result
+
+def mergearchlists(downstream,mergehead,upstream):
+	if downstream == mergehead:
+		return upstream
+	elif upstream == mergehead:
+		return downstream
+	else:
+		(dspositive,dsparsed) = parsearchlist(downstream)
+		(mhpositive,mhparsed) = parsearchlist(mergehead)
+		(uspositive,usparsed) = parsearchlist(upstream)
+	if dspositive == mhpositive == uspositive:
+		rpositive = mhpositive
+		rparsed = merge3ordereddicts(listtoordereddict(dsparsed),listtoordereddict(mhparsed),listtoordereddict(usparsed),collections.OrderedDict,None,None).keys()
+	else:
+		print('merging of mixed positive and negative architecture lists is not currently supported')
+		return False
+	if len(rparsed) == 0:
+		if rpositive:
+			#afaict there is no canonical way to represent an empty positive architecture list, use a fake architecture "none"
+			return "none"
+		else:
+			#an empty negative architecture list is simply represented as no architecture list at all
+			#which we represent by the python "None" (since that is what our regex gives us)
+			return None
+	else:
+		if not rpositive:
+			rparsed = ['!'+arch for arch in rparsed]
+		return " ".join(rparsed)
+
 def handledepconflicts(key,downstream,mergehead,upstream,tag):
 	(paragraph,field) = tag
 	if set(p[0] for p in upstream) == set(p[0] for p in downstream):
@@ -415,13 +460,7 @@ def handledepconflicts(key,downstream,mergehead,upstream,tag):
 			else:
 				print('merging of version restrictions is not currently supported')
 				versionrestriction = False
-			if downstreammetadecoded[1] == mergeheadmetadecoded[1]:
-				archlist = upstreammetadecoded[0]
-			elif upstreammetadecoded[1] == mergeheadmetadecoded[1]:
-				archlist = downstreammetadecoded[1]
-			else:
-				print('merging of architecture lists is not currently supported')
-				archlist = False
+			archlist = mergearchlists(downstreammetadecoded[1],mergeheadmetadecoded[1],upstreammetadecoded[1])
 			if (versionrestriction is not False) and (archlist is not False):
 				meta = ''
 				if versionrestriction is not None:

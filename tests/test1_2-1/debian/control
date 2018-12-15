@@ -2,7 +2,7 @@ Source: test1
 Section: unknown
 Priority: optional
 Maintainer: plugwash <plugwash@afpgtest>
-Build-Depends: debhelper (>= 9)
+Build-Depends: debhelper (>= 9), bash [!armhf], qtwebengine5-dev [amd64 arm64 armhf i386 mipsel]
 Standards-Version: 3.9.8
 
 Package: test1

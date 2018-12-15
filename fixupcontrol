@@ -335,15 +335,7 @@ ddparsed = parsecontrol(ld)
 ldregen = regencontrol(ddparsed)
 failifmismatch(ld,ldregen,filetofix+' (downstream)',filetofix+' (downstream regenerated)')
 
-def mergekeysintoset(dd,dm,du):
-	#extract sets from dictionaries.
-	sd = set(dd.keys())
-	sm = set(dm.keys())
-	su = set(du.keys())
-	#print('downstream: '+repr(sd))
-	#print('mergehead: '+repr(sm))
-	#print('upstream: '+repr(su))
-
+def merge3sets(sd,sm,su):
 	dsadded = sd - sm
 	dsremoved = sm - sd
 	usadded = su - sm
@@ -359,6 +351,16 @@ def mergekeysintoset(dd,dm,du):
 	#print('finalset: '+repr(finalset))
 	#print(sm-dsremoved)
 	return finalset
+
+def mergekeysintoset(dd,dm,du):
+	#extract sets from dictionaries.
+	sd = set(dd.keys())
+	sm = set(dm.keys())
+	su = set(du.keys())
+	#print('downstream: '+repr(sd))
+	#print('mergehead: '+repr(sm))
+	#print('upstream: '+repr(su))
+	return merge3sets(sd,sm,su)
 
 def merge3ordereddicts(dd,dm,du,dicttype,conflicthandler,tag):
 	finalset = mergekeysintoset(dd,dm,du)
@@ -405,28 +407,36 @@ def parsearchlist(alraw):
 			alparsed = [s[1:] for s in alparsed]
 	return (alpositive,alparsed)
 
-def listtoordereddict(l,v=''):
-	result = collections.OrderedDict()
-	for item in l:
-		result[item]=v
-	return result
+def makearchset(positive,parsed,knownarchset):
+	if positive:
+		return set(parsed)
+	else: 
+		return ( { ... } | knownarchset) - set(parsed)
 
 def mergearchlists(downstream,mergehead,upstream):
 	if downstream == mergehead:
 		return upstream
 	elif upstream == mergehead:
 		return downstream
-	else:
-		(dspositive,dsparsed) = parsearchlist(downstream)
-		(mhpositive,mhparsed) = parsearchlist(mergehead)
-		(uspositive,usparsed) = parsearchlist(upstream)
-	if dspositive == mhpositive == uspositive:
-		rpositive = mhpositive
-		rparsed = merge3ordereddicts(listtoordereddict(dsparsed),listtoordereddict(mhparsed),listtoordereddict(usparsed),collections.OrderedDict,None,None).keys()
-	else:
-		print('merging of mixed positive and negative architecture lists is not currently supported')
-		return False
-	if len(rparsed) == 0:
+	(dspositive,dsparsed) = parsearchlist(downstream)
+	(mhpositive,mhparsed) = parsearchlist(mergehead)
+	(uspositive,usparsed) = parsearchlist(upstream)
+	knownarchlist = mergelists(mergelists(dsparsed,usparsed),mhparsed)
+	knownarchset = set(knownarchlist)
+	dsset = makearchset(dspositive,dsparsed,knownarchset)
+	mhset = makearchset(mhpositive,mhparsed,knownarchset)
+	usset = makearchset(uspositive,usparsed,knownarchset)
+	rset = merge3sets(dsset,mhset,usset)
+	rpositive = (... not in rset)
+	rlist = []
+	for arch in knownarchlist:
+		if  rpositive:
+			if arch in rset:
+				rlist.append(arch)
+		else:
+			if arch not in rset:
+				rlist.append("!"+arch)
+	if len(rlist) == 0:
 		if rpositive:
 			#afaict there is no canonical way to represent an empty positive architecture list, use a fake architecture "none"
 			return "none"
@@ -435,9 +445,7 @@ def mergearchlists(downstream,mergehead,upstream):
 			#which we represent by the python "None" (since that is what our regex gives us)
 			return None
 	else:
-		if not rpositive:
-			rparsed = ['!'+arch for arch in rparsed]
-		return " ".join(rparsed)
+		return " ".join(rlist)
 
 def handledepconflicts(key,downstream,mergehead,upstream,tag):
 	(paragraph,field) = tag

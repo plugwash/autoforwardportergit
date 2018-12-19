@@ -38,6 +38,9 @@ for PACKAGE in $(cat $AFPGCONFIG/whitelist.pushtogithub ) ; do
         #unfortunately stretch's libreoffice can't be pushed to github due to
         #large files.
         git push -u github `git tag | grep -v 5. | grep -v 6.`
+    elif [[ $PACKAGE == rustc ]]; then
+        #unfortunately this version contains a large bootstrap tarball in the source package which github doesn't like.
+        git push -u github `git tag | grep -v 1.24.1+dfsg1-1_deb8u4`
     else
         git push -u github --tags
     fi
@@ -46,6 +49,10 @@ for PACKAGE in $(cat $AFPGCONFIG/whitelist.pushtogithub ) ; do
         if [[ $PACKAGE == libreoffice ]] && ([[ $MAINSUITE == stretch ]] || [[ $MAINSUITE == buster ]] ); then
             #unfortunately stretch's libreoffice can't be pushed to github due to
             #large files.
+            true
+        elif [[ $PACKAGE == rustc ]] && ( [[ $MAINSUITE == jessie ]] ); then
+            #unfortunately this package can't be pushed right now due to large files.
+            #(stage0 compiler tarballs)
             true
         else
             source <($SCRIPTDIR/afpg_readconfig.py $MAINSUITE:STAGINGSUITE $MAINSUITE:UPSTREAMSUITE)

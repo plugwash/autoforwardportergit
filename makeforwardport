@@ -34,8 +34,8 @@ cd makeforwardport
 git clone --no-checkout $gitdir/${PACKAGEDIR} tempgit
 cd tempgit
 dgit setup-gitattributes
-git config --local user.name "Raspbian forward pporter"
-git config --local user.email root@raspbian.org
+git config --local user.name "$forwardportname"
+git config --local user.email "$forwardportemail"
 #make sure there is no current branch
 git checkout -q --detach || true
 

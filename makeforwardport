@@ -36,8 +36,11 @@ cd tempgit
 dgit setup-gitattributes
 git config --local user.name "$forwardportname"
 git config --local user.email "$forwardportemail"
+
 #make sure there is no current branch
-git checkout -q --detach || true
+#comment this line out, I belive it is no longer needed now we use --no-checkout and it seems to cause problems
+#in certain situations involving gitattributes.
+#git checkout -q --detach || true
 
 git show ${OLDTAG}:debian/changelog > ../c1
 BASEVERSION=`$SCRIPTDIR/findchangelogunmarkedversion ../c1 $localmarker'$'$revertmarker`

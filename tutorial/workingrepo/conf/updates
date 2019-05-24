@@ -2,7 +2,7 @@ Name: debian-sid-source
 Method: http://mirror.bytemark.co.uk/debian
 Suite: sid
 #VerifyRelease: AED4B06F473041FA
-VerifyRelease: 8B48AD6246925553
+VerifyRelease: 7638D0442B90D010
 Architectures: source
 Components: main
 FilterSrcList: deinstall filter.afpg

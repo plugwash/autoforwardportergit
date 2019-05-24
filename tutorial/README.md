@@ -39,7 +39,7 @@ sid-deb , this represents debian sid.
 Reprepro needs the key for the debian repository to be in your user keyring. We
 can do this with
 
-    gpg --recv-keys 8B48AD6246925553
+    gpg --recv-keys 126C0D24BD8A2942CC7DF8AC7638D0442B90D010
 
 We also want to add the demonstration package we built above to our
 downstream distribution.

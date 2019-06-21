@@ -78,6 +78,11 @@ for package in wlf:
 	whitelist.add(package)
 	if len(package) != 0:
 		dscdirs = glob.glob(pool+'/*/*/'+package)
+		if len(dscdirs) == 0:
+			print('internal error: dscdirs list is empty!!!')
+			print('package = '+package)
+			print('pool = '+pool)
+			sys.exit(1)
 		firstdscdirforpackage[package] = dscdirs[0]
 		#print(package)
 		#print(dscdirs)

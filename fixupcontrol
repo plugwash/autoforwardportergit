@@ -237,7 +237,10 @@ def parsecontrol(controllist):
 				i += 1
 			if (i != 1) or (valuewithwhitespace[0] != ord(b' ')):
 				valuewithoutwhitespace = valuewithwhitespace[i:]
-				linestripped = linesplit[0]+b': '+valuewithoutwhitespace
+				if valuewithoutwhitespace != b'':
+					linestripped = linesplit[0]+b': '+valuewithoutwhitespace
+				else:
+					linestripped = linesplit[0]+b':'
 				fieldstartwhitespace[linestripped] = valuewithwhitespace[:i]
 				#print(repr(linestripped)+' '+repr(fieldstartwhitespace[linestripped]))
 			paragraphnocomments.append(linestripped)

@@ -101,6 +101,13 @@ if egrep '^debian/.*\.symbols$' ../conflicts ; then
 	#($SCRIPTDIR/fixupcontrol debian/control .. && git add debian/control) || true
 fi
 
+if grep ^.gitattributes$ ../conflicts ; then
+	if ! git cat-file -e $OLDTAG:.gitattributes 2>/dev/null ; then
+		#if we have removed .gitattributes downstream then it should
+		#stay removed, even if it's upstream content has changed
+		git rm .gitattributes
+	fi
+fi
 
 #make sure no branch is checked out in our destination repo so that the push doesn't fail
 cd $gitdir/${PACKAGEDIR}

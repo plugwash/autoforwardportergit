@@ -10,7 +10,7 @@ if [[ $generatefilter == yes ]] ; then
 	sed '/^$/d' $AFPGCONFIG/whitelist.import |sed 's/$/ install/' > $workingrepo/conf/filter.afpg
 fi
 if [[ $updaterepo == yes ]] ; then
-    reprepro -V update $suites
+    reprepro -V --noskipold update $suites
 fi
 $SCRIPTDIR/dscdirtogitdriver
 if [[ $dobranchpointer == yes ]] ; then

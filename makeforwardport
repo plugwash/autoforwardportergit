@@ -52,7 +52,7 @@ echo git merge -s ours --ff $BASETAG
 git merge -s ours --ff -m 'pseudomerge to tie together broken upstream history' --allow-unrelated-histories $BASETAG
 
 git branch -f $BRANCHNAME $OLDTAG
-git checkout $BRANCHNAME
+git checkout -f $BRANCHNAME
 git config merge.conflictstyle diff3
 git merge debpsuedomerge || true #when a merge has conflicts git exits with a nonzero status code
 git diff --name-only --diff-filter=U > ../conflicts

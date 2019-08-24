@@ -532,7 +532,7 @@ def handledepfieldconflicts(key,downstream,mergehead,upstream,tag):
 def handlefieldconflicts(key,downstream,mergehead,upstream,tag):
 	field = key
 	paragraph = tag
-	if key in {'Depends','Recommends','Suggests','Conflicts','Build-Depends','Build-Depends-Arch','Build-Depends-Indep','Build-Conflicts'}:
+	if key in {'Depends','Recommends','Suggests','Conflicts','Build-Depends','Build-Depends-Arch','Build-Depends-Indep','Build-Conflicts','Breaks'}:
 		return handledepfieldconflicts(key,downstream,mergehead,upstream,tag)
 	else:
 		print('conflict in field '+repr(field)+' of paragraph '+repr(tag))

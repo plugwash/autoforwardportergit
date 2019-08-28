@@ -93,9 +93,9 @@ if grep ^debian/control.source$ ../conflicts ; then
 fi
 
 
-if egrep '^debian/.*\.symbols$' ../conflicts ; then
+if egrep '^debian/.*\.symbols.*$' ../conflicts ; then
 	echo conflicting symbols file found
-	for FILE in `egrep '^debian/.*\.symbols$' ../conflicts` ; do
+	for FILE in `egrep '^debian/.*\.symbols.*$' ../conflicts` ; do
 		($SCRIPTDIR/fixupsymbols $FILE .. && git add $FILE) || true
 	done
 	#($SCRIPTDIR/fixupcontrol debian/control .. && git add debian/control) || true

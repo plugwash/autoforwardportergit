@@ -144,20 +144,28 @@ for symbol in mergelists(list(du.keys()),b = list(dd.keys())):
 		final.append(dd[symbol])
 	elif du[symbol] == dd[symbol]:
 		final.append( du[symbol])
-	elif du[symbol] == dm[symbol]:
+	elif (symbol in dm) and (du[symbol] == dm[symbol]):
 		#upstream matches mergehead, so use downstream
 		final.append(dd[symbol])
-	elif dd[symbol] == dm[symbol]:
+	elif (symbol in dm) and (dd[symbol] == dm[symbol]):
 		#downstream matches mergehead, so use upstream
 		final.append(du[symbol])
 	else:
 		#print(repr(dubd[symbol]))
 		#print(repr(dubd[symbol][0]))
+		if symbol in dm:
+			t1 = 'Warning: upstream, downstream and mergehead have symbol '
+			t2 = ' with different metadata,'
+			t3 = ' mergehead metadata is '+repr(dm[symbol])
+		else:
+			t1 = 'Warning: upstream and downstream have symbol '
+			t2 = ' with different metadata and symbol is not in mergehead at all,'
+			t3 = ''
 		if (aggressive):
-			print('Warning: upstream, downstream and mergehead have symbol '+symbol.decode('ascii')+' with different metadata, using downstream metadata, upstream metadata is '+repr(du[symbol])+' downstream metadata is '+repr(dd[symbol])+ 'mergehead metadata is '+repr(dm[symbol]))
+			print(t1+symbol.decode('ascii')+t2+' using downstream metadata, upstream metadata is '+repr(du[symbol])+' downstream metadata is '+repr(dd[symbol])+t3 )
 			final.append(dd[symbol])
 		else:
-			print('Error: upstream, downstream and mergehead have symbol '+symbol.decode('ascii')+' with different metadata, upstream metadata is '+repr(du[symbol])+' downstream metadata is '+repr(dd[symbol])+ 'mergehead metadata is '+repr(dm[symbol]))
+			print(t1+symbol.decode('ascii')+t2+' upstream metadata is '+repr(du[symbol])+' downstream metadata is '+repr(dd[symbol])+ t3)
 			sys.exit(1)
 
 f = open(filetofix+'.new','wb')

@@ -41,6 +41,9 @@ for PACKAGE in $(cat $AFPGCONFIG/whitelist.pushtogithub ) ; do
     elif [[ $PACKAGE == rustc ]]; then
         #unfortunately this version contains a large bootstrap tarball in the source package which github doesn't like.
         git push -u github `git tag | grep -v 1.24.1+dfsg1-1_deb8u4`
+    elif [[ $PACKAGE == cargo ]]; then
+        #unfortunately this version contains a large bootstrap tarball in the source package which github doesn't like.
+        git push -u github `git tag | grep -v 0.35.0-2_deb8u1`
     else
         git push -u github --tags
     fi
@@ -51,6 +54,10 @@ for PACKAGE in $(cat $AFPGCONFIG/whitelist.pushtogithub ) ; do
             #large files.
             true
         elif [[ $PACKAGE == rustc ]] && ( [[ $MAINSUITE == jessie ]] ); then
+            #unfortunately this package can't be pushed right now due to large files.
+            #(stage0 compiler tarballs)
+            true
+        elif [[ $PACKAGE == cargo ]] && ( [[ $MAINSUITE == jessie ]] ); then
             #unfortunately this package can't be pushed right now due to large files.
             #(stage0 compiler tarballs)
             true

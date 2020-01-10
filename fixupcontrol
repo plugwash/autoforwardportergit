@@ -199,7 +199,7 @@ def parsecontrol(controllist):
 	lineendwhitespace = collections.defaultdict(lineendingfactory)
 	fieldstartwhitespace = collections.defaultdict(spacefactory)
 	paragraphssplit = []
-	for line in controllist:
+	for lineno, line in enumerate(controllist):
 		linestripped = line.strip()
 		if len(linestripped) == 0:
 			#blank line
@@ -247,7 +247,7 @@ def parsecontrol(controllist):
 			lineendwhitespace[linestripped] = lews
 			lastnoncommentline = linestripped
 			foundnoncomment = True
-		elif line[0] == ord(b' '):
+		elif (line[0] == ord(b' ')) or (line[0] == ord(b'\t')):
 			#continuation line
 			linestripped = line.rstrip()
 			paragraphnocomments.append(linestripped)
@@ -255,7 +255,7 @@ def parsecontrol(controllist):
 			lastnoncommentline = linestripped
 			foundnoncomment = True
 		else:
-			print('unexpected first character on line')
+			print('unexpected first character on line '+str(lineno))
 			sys.exit(1)
 	if foundnoncomment:
 		#paragraph complete

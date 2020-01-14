@@ -48,8 +48,12 @@ BASETAG=`$SCRIPTDIR/versiontotag ${BASEVERSION}`
 
 git branch -f debpsuedomerge $DEBTAG
 git checkout debpsuedomerge
-echo git merge -s ours --ff $BASETAG
-git merge -s ours --ff -m 'pseudomerge to tie together broken upstream history' --allow-unrelated-histories $BASETAG
+#echo git merge -s ours --ff $BASETAG
+#git merge -s ours --ff -m 'pseudomerge to tie together broken upstream history' --allow-unrelated-histories $BASETAG
+#use a replace graft instead of a pseudomerge, hopefully this should avoid issues with git finding multiple merge-heads
+#and should make the resulting git history neater too.
+git replace --graft debpsuedomerge $BASETAG
+#echo `git rev-parse --verify debpsuedomerge` `git rev-parse --verify $BASETAG` > .git/info/grafts
 
 git branch -f $BRANCHNAME $OLDTAG
 git checkout -f $BRANCHNAME

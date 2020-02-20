@@ -52,8 +52,12 @@ git checkout debpsuedomerge
 #git merge -s ours --ff -m 'pseudomerge to tie together broken upstream history' --allow-unrelated-histories $BASETAG
 #use a replace graft instead of a pseudomerge, hopefully this should avoid issues with git finding multiple merge-heads
 #and should make the resulting git history neater too.
+echo $BASETAG
 git replace --graft debpsuedomerge $BASETAG
 #echo `git rev-parse --verify debpsuedomerge` `git rev-parse --verify $BASETAG` > .git/info/grafts
+#also use a replace graft to remove the parents of BASETAG, this avoids issues when BASETAG is a child of NEWTAG
+#(can happen when using makeforwardport to bring changes forward from stable to testing)
+git replace --graft $BASETAG
 
 git branch -f $BRANCHNAME $OLDTAG
 git checkout -f $BRANCHNAME

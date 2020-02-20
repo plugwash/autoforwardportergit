@@ -28,6 +28,7 @@ package = sys.argv[5]
 
 upstreamchangelog = []
 olddownstreamchangelog = []
+mergeheadchangelog = []
 
 f = open(filetofix,'rb')
 mode = 0; # 0: unconflicted text 1: downstream text 2: mergehead text 3: upstream text
@@ -65,6 +66,8 @@ for line in f:
 		upstreamchangelog.append(line)
 	elif (mode == 1):
 		olddownstreamchangelog.append(line)
+	elif (mode == 2):
+		mergeheadchangelog.append(line)
 
 f.close()
 
@@ -81,6 +84,11 @@ if (len(entries) == 0):
     print('no downstream changelog entries found, aborting')
     sys.exit(1)
 
+cm = changelog.Changelog(mergeheadchangelog)
+mergeheadversionset = set()
+for entry in cm:
+	mergeheadversionset.add(entry.version)
+
 f=open(filetofix,'wb')
 
 f.write((package+' ('+newversion+') '+distribution+'; urgency=medium\n').encode('utf-8'))
@@ -88,7 +96,9 @@ f.write(('\n').encode('utf-8'))
 for entry in reversed(entries):
 	lines = entry.changes()[:] #copy this so we don't modify the libraries
 	                           #version of it.
-
+	if entry.version in mergeheadversionset:
+		#entry was in mergehead, so it's not a downstream entry.
+		continue
 	while ((len(lines) > 0) and (lines[0] == '')):
 		 del lines[0]
 	if (len(lines) > 0):

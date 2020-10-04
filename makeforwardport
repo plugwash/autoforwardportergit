@@ -52,12 +52,13 @@ git checkout debpsuedomerge
 #git merge -s ours --ff -m 'pseudomerge to tie together broken upstream history' --allow-unrelated-histories $BASETAG
 #use a replace graft instead of a pseudomerge, hopefully this should avoid issues with git finding multiple merge-heads
 #and should make the resulting git history neater too.
+#allow graft to fail, sometimes the commit already has the parents we want
 echo $BASETAG
-git replace --graft debpsuedomerge $BASETAG
+git replace --graft debpsuedomerge $BASETAG || true
 #echo `git rev-parse --verify debpsuedomerge` `git rev-parse --verify $BASETAG` > .git/info/grafts
 #also use a replace graft to remove the parents of BASETAG, this avoids issues when BASETAG is a child of NEWTAG
 #(can happen when using makeforwardport to bring changes forward from stable to testing)
-git replace --graft $BASETAG
+git replace --graft $BASETAG || true
 
 git branch -f $BRANCHNAME $OLDTAG
 git checkout -f $BRANCHNAME
@@ -101,9 +102,9 @@ if grep ^debian/control.source$ ../conflicts ; then
 fi
 
 
-if egrep '^debian/.*\.symbols.*$' ../conflicts ; then
+if egrep '^debian/.*\.symbols.*$' ../conflicts || egrep '^debian/symbols$' ../conflicts ; then
 	echo conflicting symbols file found
-	for FILE in `egrep '^debian/.*\.symbols.*$' ../conflicts` ; do
+	for FILE in `egrep '^debian/.*\.symbols.*$' ../conflicts` `egrep '^debian/symbols$' ../conflicts` ; do
 		($SCRIPTDIR/fixupsymbols $FILE .. && git add $FILE) || true
 	done
 	#($SCRIPTDIR/fixupcontrol debian/control .. && git add debian/control) || true
@@ -196,7 +197,7 @@ cd $tmp/makeforwardport
 if [[ $dosbuild == yes ]]; then
     rm *.changes
     #going forward it would be good to have more inteligent application of --force-orig-source, not a massive priority for now though
-    sbuild -snA --force-orig-source -d ${TARGETSUITE} ${PACKAGE}_${NEWVERSIONNOEPOCH}.dsc
+    sbuild -snA --force-orig-source -d ${TARGETSUITE} `$SCRIPTDIR/getchrootoverride $PACKAGE $TARGETSUITE` ${PACKAGE}_${NEWVERSIONNOEPOCH}.dsc
 else
     #dgit build-source doens't seem to allow forced inclusion of the orig
     #tarball, so use changestool to add it.

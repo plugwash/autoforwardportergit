@@ -535,8 +535,14 @@ def handledepfieldconflicts(key,downstream,mergehead,upstream,tag):
 def handlefieldconflicts(key,downstream,mergehead,upstream,tag):
 	field = key
 	paragraph = tag
-	if key in {'Depends','Recommends','Suggests','Conflicts','Build-Depends','Build-Depends-Arch','Build-Depends-Indep','Build-Conflicts','Breaks'}:
+	if field in {'Depends','Recommends','Suggests','Conflicts','Build-Depends','Build-Depends-Arch','Build-Depends-Indep','Build-Conflicts','Breaks'}:
 		return handledepfieldconflicts(key,downstream,mergehead,upstream,tag)
+	if field in {'Architecture'}:
+		# handle the "none" psuedo-architecture specially, we use it in raspbian to disable binary packages
+		if (downstream == "none") or (upstream == "none"):
+			return "none"
+		else:
+			return mergearchlists(downstream,mergehead,upstream)
 	else:
 		print('conflict in field '+repr(field)+' of paragraph '+repr(tag))
 		print('downstream content '+repr(downstream))

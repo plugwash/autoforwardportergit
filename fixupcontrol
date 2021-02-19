@@ -392,11 +392,11 @@ def merge3ordereddicts(dd,dm,du,dicttype,conflicthandler,tag):
 
 #this decoder is very simplistic, it handles the most common case, it could
 #certainly be improved to handle other cases if that proves nessacery in the future.
-depmetapattern = re.compile('(?:([ \t]*)\(([<>= a-zA-Z0-9:.+\-~]*)\))?(?:([ \t]*)\[([ a-z0-9\!]*)\])?')
+depmetapattern = re.compile('(?:([ \t]*)\(([<>= a-zA-Z0-9:.+\-~]*)\))?(?:([ \t]*)\[([ a-z0-9\!\-]*)\])?')
 def decodedepmeta(meta):
 	m = re.fullmatch(depmetapattern,meta)
 	if m is None:
-		print('unable to decode dependency metadata '+meta)
+		print('unable to decode dependency metadata '+repr(meta))
 		return None
 	#print(m.groups())
 	(vrws,versionrestriction,alws,archlist) = m.groups()

@@ -73,7 +73,7 @@ pfnallowed = re.compile('[a-z0-9A-Z\-_:\+~\.]+',re.ASCII)
 tsallowed = re.compile('[A-Z0-9]+',re.ASCII)
 
 #regex used for matching duplicate or aincient (no Release.gpg) distribution names
-dupain = re.compile('(Debian.*|bo.*|buzz.*|hamm.*|potato|rex|slink.*)/',re.ASCII)
+dupain = re.compile('(Debian.*|bo$.*|buzz.*|hamm.*|potato|rex|slink.*)/',re.ASCII)
 
 if not pnallowed.fullmatch(package):
 	print('package name fails to match required format')
@@ -326,11 +326,11 @@ if not (finalentry is None):
 	
 	f = open(package+'_'+version+'_Release.gpg','wb')
 	f.write(gpgdata)
-	f.close
+	f.close()
 	
 	f = open(package+'_'+version+'_Release','wb')
 	f.write(releasedata)
-	f.close
+	f.close()
 	
 	#f = open('snapshotsecuretmp/Sources','wb')
 	#f.write(sourcesdata)
@@ -342,6 +342,7 @@ if not (finalentry is None):
 	if args.allow_1024:
 		command += ['--keyring', scriptdir+'/snapshotsecure-1024.gpg']
 	command += [package+'_'+version+'_Release.gpg',package+'_'+version+'_Release']
+	#print(command)
 	if (subprocess.call(command) != 0):
 		print('gpg validation failed')
 		if not args.keepevidence:
